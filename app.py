@@ -31,7 +31,7 @@ def load_cities_from_csv(file_path):
             }
 
     return cities
-
+@st.cache_data(ttl=600)
 
 def get_weather(city_name, cities):
     location = cities[city_name]
@@ -46,42 +46,20 @@ def get_weather(city_name, cities):
     "relative_humidity_2m,"
     "apparent_temperature,"
     "precipitation,"
-    "rain,"
-    "showers,"
-    "weather_code,"
-    "cloud_cover,"
-    "pressure_msl,"
-    "wind_speed_10m,"
-    "wind_direction_10m,"
-    "wind_gusts_10m"
+    "wind_speed_10m"
 ),
 "hourly": (
     "temperature_2m,"
-    "relative_humidity_2m,"
-    "apparent_temperature,"
     "precipitation_probability,"
-    "precipitation,"
-    "rain,"
-    "showers,"
-    "cloud_cover,"
-    "wind_speed_10m,"
-    "wind_gusts_10m,"
-    "visibility"
+    "precipitation"
 ),
 "daily": (
     "temperature_2m_max,"
     "temperature_2m_min,"
-    "precipitation_probability_max,"
-    "precipitation_sum,"
-    "rain_sum,"
-    "wind_speed_10m_max,"
-    "wind_gusts_10m_max,"
-    "sunrise,"
-    "sunset"
+    "precipitation_probability_max"
 ),
-"past_days": 2,
-"forecast_days": 2,
-        "timezone": "auto"
+"forecast_days": 1,
+"timezone": "auto"
     }
 
     response = requests.get(url, params=params, timeout=10)
@@ -101,6 +79,8 @@ try:
         if st.button("Get Weather"):
             try:
                 weather_data = get_weather(city, cities)
+                if weather_data is None:
+                    st.stop()
                 current = weather_data["current"]
 
                 st.subheader(f"Current weather in {city}")
