@@ -41,7 +41,46 @@ def get_weather(city_name, cities):
     params = {
         "latitude": location["latitude"],
         "longitude": location["longitude"],
-        "current": "temperature_2m,relative_humidity_2m,wind_speed_10m",
+        "current": (
+    "temperature_2m,"
+    "relative_humidity_2m,"
+    "apparent_temperature,"
+    "precipitation,"
+    "rain,"
+    "showers,"
+    "weather_code,"
+    "cloud_cover,"
+    "pressure_msl,"
+    "wind_speed_10m,"
+    "wind_direction_10m,"
+    "wind_gusts_10m"
+),
+"hourly": (
+    "temperature_2m,"
+    "relative_humidity_2m,"
+    "apparent_temperature,"
+    "precipitation_probability,"
+    "precipitation,"
+    "rain,"
+    "showers,"
+    "cloud_cover,"
+    "wind_speed_10m,"
+    "wind_gusts_10m,"
+    "visibility"
+),
+"daily": (
+    "temperature_2m_max,"
+    "temperature_2m_min,"
+    "precipitation_probability_max,"
+    "precipitation_sum,"
+    "rain_sum,"
+    "wind_speed_10m_max,"
+    "wind_gusts_10m_max,"
+    "sunrise,"
+    "sunset"
+),
+"past_days": 2,
+"forecast_days": 2,
         "timezone": "auto"
     }
 
