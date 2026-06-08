@@ -66,10 +66,10 @@ def get_weather(city_name, cities):
     response = requests.get(url, params=params, timeout=10)
 
     if response.status_code == 429:
-         return {
+       return {
             "error": "rate_limit",
             "message": "The weather API is temporarily busy. Please wait a few minutes and try again."
-    }
+        }
 
     response.raise_for_status()
 
