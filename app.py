@@ -67,9 +67,9 @@ def get_weather(city_name, cities):
 
     if response.status_code == 429:
        return {
-            "error": "rate_limit",
-            "message": "The weather API is temporarily busy. Please wait a few minutes and try again."
-        }
+           "error": "rate_limit",
+           "message": "The weather API is temporarily busy. Please wait a few minutes and try again."
+       }
 
     response.raise_for_status()
 
