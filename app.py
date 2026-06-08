@@ -31,6 +31,7 @@ def load_cities_from_csv(file_path):
             }
 
     return cities
+
 @st.cache_data(ttl=600)
 
 def get_weather(city_name, cities):
@@ -63,6 +64,13 @@ def get_weather(city_name, cities):
     }
 
     response = requests.get(url, params=params, timeout=10)
+
+    if response.status_code == 429:
+    return {
+        "error": "rate_limit",
+        "message": "The weather API is temporarily busy. Please wait a few minutes and try again."
+    }
+
     response.raise_for_status()
 
     return response.json()
@@ -79,6 +87,9 @@ try:
         if st.button("Get Weather"):
             try:
                 weather_data = get_weather(city, cities)
+                if "error" in weather_data:
+                    st.warning(weather_data["message"])
+                    st.stop()
                 if weather_data is None:
                     st.stop()
                 current = weather_data["current"]
