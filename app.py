@@ -1,3 +1,4 @@
+import pandas as pd
 import requests
 import streamlit as st
 
@@ -5,7 +6,7 @@ import streamlit as st
 st.set_page_config(page_title="Weather Buddy AI", page_icon="🌤️", layout="wide")
 
 st.title("🌤️ Weather Buddy AI")
-st.caption("Version: City search + optional latitude/longitude input")
+st.caption("Version: City name or coordinates input")
 
 st.write(
     "Enter a city name, or provide latitude and longitude directly. "
@@ -131,43 +132,49 @@ with st.expander("How this app works"):
 
 st.subheader("Location Input")
 
-city_name = st.text_input(
-    "Enter city name",
-    value="Bangalore",
-    help="Example: Bangalore, Kochi, London, New York, Paris",
+input_method = st.radio(
+    "How do you want to search?",
+    ["City name", "Coordinates"],
+    horizontal=True
 )
 
-col_a, col_b = st.columns(2)
+city_name = ""
+latitude = None
+longitude = None
+display_location = ""
 
-with col_a:
-    latitude_input = st.text_input(
-        "Latitude, optional",
-        value="",
-        help="Example for Bangalore: 12.9716",
+if input_method == "City name":
+    city_name = st.text_input(
+        "Enter city name",
+        value="Bangalore",
+        help="Example: Bangalore, Kochi, London, New York, Paris"
     )
 
-with col_b:
-    longitude_input = st.text_input(
-        "Longitude, optional",
-        value="",
-        help="Example for Bangalore: 77.5946",
-    )
+else:
+    col_a, col_b = st.columns(2)
+
+    with col_a:
+        latitude = st.number_input(
+            "Enter latitude",
+            value=12.9716,
+            format="%.6f",
+            help="Example for Bangalore: 12.9716"
+        )
+
+    with col_b:
+        longitude = st.number_input(
+            "Enter longitude",
+            value=77.5946,
+            format="%.6f",
+            help="Example for Bangalore: 77.5946"
+        )
 
 
 if st.button("Get Weather"):
     try:
-        latitude = None
-        longitude = None
-        display_location = city_name
-
-        if latitude_input.strip() and longitude_input.strip():
-            latitude = float(latitude_input)
-            longitude = float(longitude_input)
-            display_location = f"{city_name} ({latitude}, {longitude})"
-
-        else:
+        if input_method == "City name":
             if not city_name.strip():
-                st.error("Please enter a city name, or provide latitude and longitude.")
+                st.error("Please enter a city name.")
                 st.stop()
 
             location_results = geocode_city(city_name.strip())
@@ -176,44 +183,23 @@ if st.button("Get Weather"):
                 st.warning(location_results["message"])
                 st.stop()
 
-            st.subheader("Matching Locations")
-
-            location_options = {}
-            for location in location_results:
-                name = location.get("name", "")
-                admin1 = location.get("admin1", "")
-                country = location.get("country", "")
-                latitude_value = location.get("latitude")
-                longitude_value = location.get("longitude")
-
-                label_parts = [name]
-                if admin1:
-                    label_parts.append(admin1)
-                if country:
-                    label_parts.append(country)
-
-                label = ", ".join(label_parts)
-                label = f"{label} | Lat: {latitude_value}, Lon: {longitude_value}"
-
-                location_options[label] = location
-
-            selected_location_label = st.selectbox(
-                "Select the correct location",
-                list(location_options.keys()),
-            )
-
-            selected_location = location_options[selected_location_label]
+            selected_location = location_results[0]
 
             latitude = selected_location["latitude"]
             longitude = selected_location["longitude"]
 
             display_location_parts = [selected_location.get("name", "")]
+
             if selected_location.get("admin1"):
                 display_location_parts.append(selected_location["admin1"])
+
             if selected_location.get("country"):
                 display_location_parts.append(selected_location["country"])
 
             display_location = ", ".join(display_location_parts)
+
+        else:
+            display_location = f"Latitude {latitude}, Longitude {longitude}"
 
         st.info(f"Using coordinates: Latitude {latitude}, Longitude {longitude}")
 
@@ -285,18 +271,36 @@ if st.button("Get Weather"):
         )
         st.info(advice)
 
-        st.subheader("Hourly Trends")
 
-        chart_data = {
+
+        st.subheader("Hourly Trends for Today")
+
+        hourly_df = pd.DataFrame({
+            "Time": pd.to_datetime(hourly["time"]),
             "Temperature °C": hourly["temperature_2m"],
             "Rain Probability %": hourly["precipitation_probability"],
+            "Rain mm": hourly["precipitation"],
             "Wind Speed km/h": hourly["wind_speed_10m"],
-        }
+        })
 
-        st.line_chart(chart_data)
+        hourly_df["Hour"] = hourly_df["Time"].dt.strftime("%I %p")
+
+        st.write("Temperature trend")
+        st.line_chart(hourly_df,x="Hour", y="Temperature °C")
+
+        st.write("Rain probability trend")
+        st.line_chart(hourly_df, x="Hour",y="Rain Probability %")
+        
+
+        st.write("Wind speed trend")
+        st.line_chart(hourly_df,x="Hour",y="Wind Speed km/h")
+        
+
+        with st.expander("View hourly data table"):
+             st.dataframe(hourly_df)
 
         with st.expander("Raw API Response"):
-            st.json(current)
+             st.json(current)
 
     except ValueError:
         st.error("Latitude and longitude must be valid numbers. Example: 12.9716 and 77.5946")
