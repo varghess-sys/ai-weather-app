@@ -9,20 +9,21 @@ st.title("🌤️ Weather Buddy AI")
 st.caption("Version: City name or coordinates input")
 
 st.write(
-    "Enter a city name, or provide latitude and longitude directly. "
+    "Enter a city name, or specific place name, or provide latitude and longitude directly. "
     "If latitude and longitude are not provided, the app will find them using Open-Meteo's Geocoding API."
 )
 
 
 @st.cache_data(ttl=86400)
 def geocode_city(city_name):
+    st.caption("Tip: If the result looks wrong, try the current official city name, for example Mysuru instead of Mysore.")
     """Find latitude and longitude for a city name using Open-Meteo Geocoding API."""
 
     url = "https://geocoding-api.open-meteo.com/v1/search"
 
     params = {
         "name": city_name,
-        "count": 5,
+        "count": 10,
         "language": "en",
         "format": "json",
     }
@@ -41,10 +42,76 @@ def geocode_city(city_name):
     if "results" not in data or not data["results"]:
         return {
             "error": "not_found",
-            "message": f"No matching location found for '{city_name}'. Try a more specific name like 'Bangalore, India'.",
-        }
+            "message": f"No matching city or place found for '{city_name}'. "
+                        "Enter a specific city or place, not only a state or region. "
+                        "Example: Bengaluru, Mysuru, Mangaluru, Delhi, India.",
+                }
 
     return data["results"]
+
+@st.cache_data(ttl=86400)
+def reverse_geocode(latitude, longitude):
+    """Find place name from latitude and longitude."""
+
+    url = "https://nominatim.openstreetmap.org/reverse"
+
+    params = {
+        "lat": latitude,
+        "lon": longitude,
+        "format": "jsonv2",
+        "addressdetails": 1,
+        "zoom": 10,
+    }
+
+    headers = {
+        "User-Agent": "weather-buddy-ai-learning-app"
+    }
+
+    response = requests.get(url, params=params, headers=headers, timeout=10)
+
+    if response.status_code == 429:
+        return "Place lookup is temporarily busy. Showing coordinates only."
+
+    if response.status_code == 404:
+        return "Unknown place"
+
+    response.raise_for_status()
+    data = response.json()
+
+    if data.get("display_name"):
+        return data["display_name"]
+
+    return "Unknown place"
+
+
+def validate_coordinates(latitude_text, longitude_text):
+    """Validate latitude and longitude entered as text."""
+
+    latitude_text = latitude_text.strip()
+    longitude_text = longitude_text.strip()
+
+    if not latitude_text and not longitude_text:
+        return None, None, "Please enter both latitude and longitude."
+
+    if latitude_text and not longitude_text:
+        return None, None, "Please enter longitude also, or use city name instead."
+
+    if longitude_text and not latitude_text:
+        return None, None, "Please enter latitude also, or use city name instead."
+
+    try:
+        latitude = float(latitude_text)
+        longitude = float(longitude_text)
+    except ValueError:
+        return None, None, "Latitude and longitude must be valid numbers. Example: 12.9716 and 77.5946."
+
+    if latitude < -90 or latitude > 90:
+        return None, None, "Latitude must be between -90 and 90."
+
+    if longitude < -180 or longitude > 180:
+        return None, None, "Longitude must be between -180 and 180."
+
+    return latitude, longitude, None
 
 
 @st.cache_data(ttl=600)
@@ -74,7 +141,7 @@ def get_weather(latitude, longitude):
             "temperature_2m_min,"
             "precipitation_probability_max"
         ),
-        "forecast_days": 1,
+        "forecast_days": 2,
         "timezone": "auto",
     }
 
@@ -130,42 +197,103 @@ with st.expander("How this app works"):
     )
 
 
-st.subheader("Location Input")
+    st.subheader("Location Input")
 
-input_method = st.radio(
-    "How do you want to search?",
-    ["City name", "Coordinates"],
-    horizontal=True
-)
+    input_method = st.radio(
+        "How do you want to search?",
+        ["City name", "Coordinates"],
+        horizontal=True
+    )
 
-city_name = ""
-latitude = None
-longitude = None
-display_location = ""
+    if "location_results" not in st.session_state:
+        st.session_state.location_results = []
+
+    if "last_city_search" not in st.session_state:
+        st.session_state.last_city_search = ""
+
+    city_name = ""
+    latitude = None
+    longitude = None
+    latitude_input = ""
+    longitude_input = ""
+    display_location = ""
+    selected_location = None
 
 if input_method == "City name":
     city_name = st.text_input(
-        "Enter city name",
+        "Enter city name or specific place name",
         value="Bangalore",
-        help="Example: Bangalore, Kochi, London, New York, Paris"
+        help="Example: Bengaluru, Mysuru, Kochi, Delhi, London. Do not enter only a state like Karnataka."
     )
 
+    st.caption(
+        "Tip: If the result looks wrong, try the current official city name. "
+        "Example: try Mysuru instead of Mysore."
+    )
+
+    if st.button("Find Locations"):
+        if not city_name.strip():
+            st.error("Please enter a city name.")
+            st.stop()
+
+        location_results = geocode_city(city_name.strip())
+
+        if isinstance(location_results, dict) and "error" in location_results:
+            st.warning(location_results["message"])
+            st.stop()
+
+        st.session_state.location_results = location_results
+        st.session_state.last_city_search = city_name.strip()
+
+    if st.session_state.location_results:
+        st.write(f"Showing matches for: {st.session_state.last_city_search}")
+
+        location_options = {}
+
+        for index, location in enumerate(st.session_state.location_results, start=1):
+            name = location.get("name", "")
+            admin1 = location.get("admin1", "")
+            country = location.get("country", "")
+            latitude_value = location.get("latitude")
+            longitude_value = location.get("longitude")
+
+            label_parts = [name]
+
+            if admin1:
+                label_parts.append(admin1)
+
+            if country:
+                label_parts.append(country)
+
+            label = ", ".join(label_parts)
+            label = f"{index}. {label} | Lat: {latitude_value}, Lon: {longitude_value}"
+
+            location_options[label] = location
+
+        selected_location_label = st.selectbox(
+            "Select the correct location",
+            list(location_options.keys())
+        )
+
+        selected_location = location_options[selected_location_label]
+
 else:
+    st.session_state.location_results = []
+    st.session_state.last_city_search = ""
+
     col_a, col_b = st.columns(2)
 
     with col_a:
-        latitude = st.number_input(
+        latitude_input = st.text_input(
             "Enter latitude",
-            value=12.9716,
-            format="%.6f",
+            value="",
             help="Example for Bangalore: 12.9716"
         )
 
     with col_b:
-        longitude = st.number_input(
+        longitude_input = st.text_input(
             "Enter longitude",
-            value=77.5946,
-            format="%.6f",
+            value="",
             help="Example for Bangalore: 77.5946"
         )
 
@@ -173,17 +301,9 @@ else:
 if st.button("Get Weather"):
     try:
         if input_method == "City name":
-            if not city_name.strip():
-                st.error("Please enter a city name.")
+            if selected_location is None:
+                st.error("Please click Find Locations and select the correct location first.")
                 st.stop()
-
-            location_results = geocode_city(city_name.strip())
-
-            if isinstance(location_results, dict) and "error" in location_results:
-                st.warning(location_results["message"])
-                st.stop()
-
-            selected_location = location_results[0]
 
             latitude = selected_location["latitude"]
             longitude = selected_location["longitude"]
@@ -199,9 +319,22 @@ if st.button("Get Weather"):
             display_location = ", ".join(display_location_parts)
 
         else:
-            display_location = f"Latitude {latitude}, Longitude {longitude}"
+            latitude, longitude, coordinate_error = validate_coordinates(
+                latitude_input,
+                longitude_input
+            )
 
-        st.info(f"Using coordinates: Latitude {latitude}, Longitude {longitude}")
+            if coordinate_error:
+                st.error(coordinate_error)
+                st.stop()
+
+            place_name = reverse_geocode(latitude, longitude)
+            display_location = place_name
+
+        st.info(
+            f"Using location: {display_location} | "
+            f"Latitude {latitude}, Longitude {longitude}"
+        )
 
         st.map(
             {
@@ -230,77 +363,103 @@ if st.button("Get Weather"):
         today_low = daily["temperature_2m_min"][0]
         rain_probability_max = daily["precipitation_probability_max"][0]
 
-        st.subheader(f"Current weather in {display_location}")
+        st.subheader(f"Weather dashboard: {display_location}")
 
-        col1, col2, col3, col4 = st.columns(4)
+        st.caption(
+            f"Latitude {latitude}, Longitude {longitude}"
+        )
+
+        # Compact top metrics
+        col1, col2, col3, col4, col5, col6 = st.columns(6)
 
         with col1:
-            st.metric("Temperature", f"{temperature} °C")
+            st.metric("Temp", f"{temperature} °C")
 
         with col2:
-            st.metric("Feels Like", f"{feels_like} °C")
+            st.metric("Feels", f"{feels_like} °C")
 
         with col3:
             st.metric("Humidity", f"{humidity}%")
 
         with col4:
-            st.metric("Wind Speed", f"{wind_speed} km/h")
-
-        st.subheader("Today's Weather Range")
-
-        col5, col6, col7, col8 = st.columns(4)
+            st.metric("Rain Chance", f"{rain_probability_max}%")
 
         with col5:
-            st.metric("Today's High", f"{today_high} °C")
+            st.metric("Wind", f"{wind_speed} km/h")
 
         with col6:
-            st.metric("Today's Low", f"{today_low} °C")
+            st.metric("High / Low", f"{today_high} / {today_low} °C")
 
-        with col7:
-            st.metric("Rain Now", f"{rain_now} mm")
-
-        with col8:
-            st.metric("Max Rain Chance", f"{rain_probability_max}%")
-
-        st.subheader("Simple Weather Advice")
+        # Advisor section
         advice = make_simple_advice(
             temperature,
             humidity,
             rain_probability_max,
             wind_speed,
         )
-        st.info(advice)
 
+        st.info(f"Advisor: {advice}")
 
-
-        st.subheader("Hourly Trends for Today")
-
-        hourly_df = pd.DataFrame({
-            "Time": pd.to_datetime(hourly["time"]),
-            "Temperature °C": hourly["temperature_2m"],
-            "Rain Probability %": hourly["precipitation_probability"],
-            "Rain mm": hourly["precipitation"],
-            "Wind Speed km/h": hourly["wind_speed_10m"],
-        })
+        # Hourly dataframe
+        hourly_df = pd.DataFrame(
+            {
+                "Time": pd.to_datetime(hourly["time"]),
+                "Temperature °C": hourly["temperature_2m"],
+                "Rain Probability %": hourly["precipitation_probability"],
+                "Rain mm": hourly["precipitation"],
+                "Wind Speed km/h": hourly["wind_speed_10m"],
+            }
+        )
 
         hourly_df["Hour"] = hourly_df["Time"].dt.strftime("%I %p")
 
-        st.write("Temperature trend")
-        st.line_chart(hourly_df,x="Hour", y="Temperature °C")
-
-        st.write("Rain probability trend")
-        st.line_chart(hourly_df, x="Hour",y="Rain Probability %")
+        # Keep charts compact by showing only the next 12 hours
+        current_time = pd.to_datetime(current["time"])
         
 
-        st.write("Wind speed trend")
-        st.line_chart(hourly_df,x="Hour",y="Wind Speed km/h")
+        compact_hourly_df = hourly_df[hourly_df["Time"] >= current_time].head(12)
+
+        if compact_hourly_df.empty:
+            compact_hourly_df = hourly_df.head(12)
+
         
+
+        st.subheader("Next 12 hours from now")
+
+        chart_col1, chart_col2, chart_col3 = st.columns(3)
+
+        with chart_col1:
+            st.write("Temperature")
+            st.line_chart(
+                compact_hourly_df,
+                x="Time",
+                y="Temperature °C",
+                height=180,
+            )
+
+        with chart_col2:
+            st.write("Rain probability")
+            st.line_chart(
+                compact_hourly_df,
+                x="Time",
+                y="Rain Probability %",
+                height=180,
+            )
+
+        with chart_col3:
+            st.write("Wind speed")
+            st.line_chart(
+                compact_hourly_df,
+                x="Time",
+                y="Wind Speed km/h",
+                height=180,
+            )
 
         with st.expander("View hourly data table"):
-             st.dataframe(hourly_df)
+            st.dataframe(hourly_df)
 
         with st.expander("Raw API Response"):
-             st.json(current)
+            st.json(current)
 
     except ValueError:
         st.error("Latitude and longitude must be valid numbers. Example: 12.9716 and 77.5946")
