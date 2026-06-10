@@ -9,7 +9,7 @@ st.title("🌤️ Weather Buddy AI")
 st.caption("Version: City name or coordinates input")
 
 st.write(
-    "Enter a city name, or provide latitude and longitude directly. "
+    "Enter a city name, or specific place name, or provide latitude and longitude directly. "
     "If latitude and longitude are not provided, the app will find them using Open-Meteo's Geocoding API."
 )
 
@@ -42,8 +42,10 @@ def geocode_city(city_name):
     if "results" not in data or not data["results"]:
         return {
             "error": "not_found",
-            "message": f"No matching location found for '{city_name}'. Try a more specific name like 'Bangalore, India'.",
-        }
+            "message": f"No matching city or place found for '{city_name}'. "
+                        "Enter a specific city or place, not only a state or region. "
+                        "Example: Bengaluru, Mysuru, Mangaluru, Delhi, India.",
+                }
 
     return data["results"]
 
@@ -219,9 +221,9 @@ with st.expander("How this app works"):
 
 if input_method == "City name":
     city_name = st.text_input(
-        "Enter city name",
+        "Enter city name or specific place name",
         value="Bangalore",
-        help="Example: Bengaluru, Mysuru, Kochi, London. Try current city names if old names do not return correctly."
+        help="Example: Bengaluru, Mysuru, Kochi, Delhi, London. Do not enter only a state like Karnataka."
     )
 
     st.caption(
@@ -417,9 +419,14 @@ if st.button("Get Weather"):
         compact_hourly_df = hourly_df[hourly_df["Time"] >= current_time].head(12)
 
         if compact_hourly_df.empty:
-            compact_hourly_df = hourly_df.head(12)
+            current_time = pd.to_datetime(current["time"])
 
-        st.subheader("Next 12 hours from now")
+            compact_hourly_df = hourly_df[hourly_df["Time"] >= current_time].head(12)
+
+            if compact_hourly_df.empty:
+                compact_hourly_df = hourly_df.head(12)
+
+            st.subheader("Next 12 hours from now")
 
         chart_col1, chart_col2, chart_col3 = st.columns(3)
 
