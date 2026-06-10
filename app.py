@@ -16,13 +16,14 @@ st.write(
 
 @st.cache_data(ttl=86400)
 def geocode_city(city_name):
+    st.caption("Tip: If the result looks wrong, try the current official city name, for example Mysuru instead of Mysore.")
     """Find latitude and longitude for a city name using Open-Meteo Geocoding API."""
 
     url = "https://geocoding-api.open-meteo.com/v1/search"
 
     params = {
         "name": city_name,
-        "count": 5,
+        "count": 10,
         "language": "en",
         "format": "json",
     }
@@ -247,6 +248,37 @@ if st.button("Get Weather"):
                 st.stop()
 
             selected_location = location_results[0]
+            
+
+            location_options = {}
+
+            for location in location_results:
+                name = location.get("name", "")
+                admin1 = location.get("admin1", "")
+                country = location.get("country", "")
+                latitude_value = location.get("latitude")
+                longitude_value = location.get("longitude")
+
+                label_parts = [name]
+
+                if admin1:
+                    label_parts.append(admin1)
+
+                if country:
+                    label_parts.append(country)
+
+                label = ", ".join(label_parts)
+                label = f"{label} | Lat: {latitude_value}, Lon: {longitude_value}"
+
+                location_options[label] = location
+
+            selected_location_label = st.selectbox(
+                "Select the correct location",
+                list(location_options.keys())
+            )
+
+            selected_location = location_options[selected_location_label]
+
 
             latitude = selected_location["latitude"]
             longitude = selected_location["longitude"]
@@ -305,77 +337,100 @@ if st.button("Get Weather"):
         today_low = daily["temperature_2m_min"][0]
         rain_probability_max = daily["precipitation_probability_max"][0]
 
-        st.subheader(f"Current weather in {display_location}")
+        st.subheader(f"Weather dashboard: {display_location}")
 
-        col1, col2, col3, col4 = st.columns(4)
+        st.caption(
+            f"Latitude {latitude}, Longitude {longitude}"
+        )
+
+        # Compact top metrics
+        col1, col2, col3, col4, col5, col6 = st.columns(6)
 
         with col1:
-            st.metric("Temperature", f"{temperature} °C")
+            st.metric("Temp", f"{temperature} °C")
 
         with col2:
-            st.metric("Feels Like", f"{feels_like} °C")
+            st.metric("Feels", f"{feels_like} °C")
 
         with col3:
             st.metric("Humidity", f"{humidity}%")
 
         with col4:
-            st.metric("Wind Speed", f"{wind_speed} km/h")
-
-        st.subheader("Today's Weather Range")
-
-        col5, col6, col7, col8 = st.columns(4)
+            st.metric("Rain Chance", f"{rain_probability_max}%")
 
         with col5:
-            st.metric("Today's High", f"{today_high} °C")
+            st.metric("Wind", f"{wind_speed} km/h")
 
         with col6:
-            st.metric("Today's Low", f"{today_low} °C")
+            st.metric("High / Low", f"{today_high} / {today_low} °C")
 
-        with col7:
-            st.metric("Rain Now", f"{rain_now} mm")
-
-        with col8:
-            st.metric("Max Rain Chance", f"{rain_probability_max}%")
-
-        st.subheader("Simple Weather Advice")
+        # Advisor section
         advice = make_simple_advice(
             temperature,
             humidity,
             rain_probability_max,
             wind_speed,
         )
-        st.info(advice)
 
+        st.info(f"Advisor: {advice}")
 
-
-        st.subheader("Hourly Trends for Today")
-
-        hourly_df = pd.DataFrame({
-            "Time": pd.to_datetime(hourly["time"]),
-            "Temperature °C": hourly["temperature_2m"],
-            "Rain Probability %": hourly["precipitation_probability"],
-            "Rain mm": hourly["precipitation"],
-            "Wind Speed km/h": hourly["wind_speed_10m"],
-        })
+        # Hourly dataframe
+        hourly_df = pd.DataFrame(
+            {
+                "Time": pd.to_datetime(hourly["time"]),
+                "Temperature °C": hourly["temperature_2m"],
+                "Rain Probability %": hourly["precipitation_probability"],
+                "Rain mm": hourly["precipitation"],
+                "Wind Speed km/h": hourly["wind_speed_10m"],
+            }
+        )
 
         hourly_df["Hour"] = hourly_df["Time"].dt.strftime("%I %p")
 
-        st.write("Temperature trend")
-        st.line_chart(hourly_df,x="Hour", y="Temperature °C")
+        # Keep charts compact by showing only the next 12 hours
+        current_time = pd.to_datetime(current["time"])
 
-        st.write("Rain probability trend")
-        st.line_chart(hourly_df, x="Hour",y="Rain Probability %")
-        
+        compact_hourly_df = hourly_df[hourly_df["Time"] >= current_time].head(12)
 
-        st.write("Wind speed trend")
-        st.line_chart(hourly_df,x="Hour",y="Wind Speed km/h")
-        
+        if compact_hourly_df.empty:
+            compact_hourly_df = hourly_df.head(12)
+
+        st.subheader("Next 12 hours from now")
+
+        chart_col1, chart_col2, chart_col3 = st.columns(3)
+
+        with chart_col1:
+            st.write("Temperature")
+            st.line_chart(
+                compact_hourly_df,
+                x="Hour",
+                y="Temperature °C",
+                height=180,
+            )
+
+        with chart_col2:
+            st.write("Rain probability")
+            st.line_chart(
+                compact_hourly_df,
+                x="Hour",
+                y="Rain Probability %",
+                height=180,
+            )
+
+        with chart_col3:
+            st.write("Wind speed")
+            st.line_chart(
+                compact_hourly_df,
+                x="Hour",
+                y="Wind Speed km/h",
+                height=180,
+            )
 
         with st.expander("View hourly data table"):
-             st.dataframe(hourly_df)
+            st.dataframe(hourly_df)
 
         with st.expander("Raw API Response"):
-             st.json(current)
+            st.json(current)
 
     except ValueError:
         st.error("Latitude and longitude must be valid numbers. Example: 12.9716 and 77.5946")
