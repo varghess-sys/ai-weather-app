@@ -141,7 +141,7 @@ def get_weather(latitude, longitude):
             "temperature_2m_min,"
             "precipitation_probability_max"
         ),
-        "forecast_days": 1,
+        "forecast_days": 2,
         "timezone": "auto",
     }
 
