@@ -195,28 +195,90 @@ with st.expander("How this app works"):
     )
 
 
-st.subheader("Location Input")
+    st.subheader("Location Input")
 
-input_method = st.radio(
-    "How do you want to search?",
-    ["City name", "Coordinates"],
-    horizontal=True
-)
+    input_method = st.radio(
+        "How do you want to search?",
+        ["City name", "Coordinates"],
+        horizontal=True
+    )
 
-latitude = None
-longitude = None
-latitude_input = ""
-longitude_input = ""
-display_location = ""
+    if "location_results" not in st.session_state:
+        st.session_state.location_results = []
+
+    if "last_city_search" not in st.session_state:
+        st.session_state.last_city_search = ""
+
+    city_name = ""
+    latitude = None
+    longitude = None
+    latitude_input = ""
+    longitude_input = ""
+    display_location = ""
+    selected_location = None
 
 if input_method == "City name":
     city_name = st.text_input(
         "Enter city name",
         value="Bangalore",
-        help="Example: Bangalore, Kochi, London, New York, Paris"
+        help="Example: Bengaluru, Mysuru, Kochi, London. Try current city names if old names do not return correctly."
     )
 
+    st.caption(
+        "Tip: If the result looks wrong, try the current official city name. "
+        "Example: try Mysuru instead of Mysore."
+    )
+
+    if st.button("Find Locations"):
+        if not city_name.strip():
+            st.error("Please enter a city name.")
+            st.stop()
+
+        location_results = geocode_city(city_name.strip())
+
+        if isinstance(location_results, dict) and "error" in location_results:
+            st.warning(location_results["message"])
+            st.stop()
+
+        st.session_state.location_results = location_results
+        st.session_state.last_city_search = city_name.strip()
+
+    if st.session_state.location_results:
+        st.write(f"Showing matches for: {st.session_state.last_city_search}")
+
+        location_options = {}
+
+        for index, location in enumerate(st.session_state.location_results, start=1):
+            name = location.get("name", "")
+            admin1 = location.get("admin1", "")
+            country = location.get("country", "")
+            latitude_value = location.get("latitude")
+            longitude_value = location.get("longitude")
+
+            label_parts = [name]
+
+            if admin1:
+                label_parts.append(admin1)
+
+            if country:
+                label_parts.append(country)
+
+            label = ", ".join(label_parts)
+            label = f"{index}. {label} | Lat: {latitude_value}, Lon: {longitude_value}"
+
+            location_options[label] = location
+
+        selected_location_label = st.selectbox(
+            "Select the correct location",
+            list(location_options.keys())
+        )
+
+        selected_location = location_options[selected_location_label]
+
 else:
+    st.session_state.location_results = []
+    st.session_state.last_city_search = ""
+
     col_a, col_b = st.columns(2)
 
     with col_a:
@@ -237,48 +299,9 @@ else:
 if st.button("Get Weather"):
     try:
         if input_method == "City name":
-            if not city_name.strip():
-                st.error("Please enter a city name.")
+            if selected_location is None:
+                st.error("Please click Find Locations and select the correct location first.")
                 st.stop()
-
-            location_results = geocode_city(city_name.strip())
-
-            if isinstance(location_results, dict) and "error" in location_results:
-                st.warning(location_results["message"])
-                st.stop()
-
-            selected_location = location_results[0]
-            
-
-            location_options = {}
-
-            for location in location_results:
-                name = location.get("name", "")
-                admin1 = location.get("admin1", "")
-                country = location.get("country", "")
-                latitude_value = location.get("latitude")
-                longitude_value = location.get("longitude")
-
-                label_parts = [name]
-
-                if admin1:
-                    label_parts.append(admin1)
-
-                if country:
-                    label_parts.append(country)
-
-                label = ", ".join(label_parts)
-                label = f"{label} | Lat: {latitude_value}, Lon: {longitude_value}"
-
-                location_options[label] = location
-
-            selected_location_label = st.selectbox(
-                "Select the correct location",
-                list(location_options.keys())
-            )
-
-            selected_location = location_options[selected_location_label]
-
 
             latitude = selected_location["latitude"]
             longitude = selected_location["longitude"]
@@ -306,9 +329,10 @@ if st.button("Get Weather"):
             place_name = reverse_geocode(latitude, longitude)
             display_location = place_name
 
-        st.info(f"Using location: {display_location} | "
-                f"Latitude {latitude}, Longitude {longitude}"
-            )
+        st.info(
+            f"Using location: {display_location} | "
+            f"Latitude {latitude}, Longitude {longitude}"
+        )
 
         st.map(
             {
