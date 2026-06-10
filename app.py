@@ -415,18 +415,16 @@ if st.button("Get Weather"):
 
         # Keep charts compact by showing only the next 12 hours
         current_time = pd.to_datetime(current["time"])
+        
 
         compact_hourly_df = hourly_df[hourly_df["Time"] >= current_time].head(12)
 
         if compact_hourly_df.empty:
-            current_time = pd.to_datetime(current["time"])
+            compact_hourly_df = hourly_df.head(12)
 
-            compact_hourly_df = hourly_df[hourly_df["Time"] >= current_time].head(12)
+        
 
-            if compact_hourly_df.empty:
-                compact_hourly_df = hourly_df.head(12)
-
-            st.subheader("Next 12 hours from now")
+        st.subheader("Next 12 hours from now")
 
         chart_col1, chart_col2, chart_col3 = st.columns(3)
 
@@ -434,7 +432,7 @@ if st.button("Get Weather"):
             st.write("Temperature")
             st.line_chart(
                 compact_hourly_df,
-                x="Hour",
+                x="Time",
                 y="Temperature °C",
                 height=180,
             )
@@ -443,7 +441,7 @@ if st.button("Get Weather"):
             st.write("Rain probability")
             st.line_chart(
                 compact_hourly_df,
-                x="Hour",
+                x="Time",
                 y="Rain Probability %",
                 height=180,
             )
@@ -452,7 +450,7 @@ if st.button("Get Weather"):
             st.write("Wind speed")
             st.line_chart(
                 compact_hourly_df,
-                x="Hour",
+                x="Time",
                 y="Wind Speed km/h",
                 height=180,
             )
