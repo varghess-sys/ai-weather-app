@@ -6,7 +6,7 @@ import streamlit as st
 st.set_page_config(page_title="Weather Buddy AI", page_icon="🌤️", layout="wide")
 
 st.title("🌤️ Weather Buddy AI")
-st.caption("Version: City name or coordinates input")
+st.caption("Version: Compact dashboard work in progress")
 
 st.write(
     "Enter a city name, or provide latitude and longitude directly. "
