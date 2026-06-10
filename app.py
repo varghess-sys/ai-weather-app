@@ -46,6 +46,70 @@ def geocode_city(city_name):
 
     return data["results"]
 
+@st.cache_data(ttl=86400)
+def reverse_geocode(latitude, longitude):
+    """Find place name from latitude and longitude."""
+
+    url = "https://nominatim.openstreetmap.org/reverse"
+
+    params = {
+        "lat": latitude,
+        "lon": longitude,
+        "format": "jsonv2",
+        "addressdetails": 1,
+        "zoom": 10,
+    }
+
+    headers = {
+        "User-Agent": "weather-buddy-ai-learning-app"
+    }
+
+    response = requests.get(url, params=params, headers=headers, timeout=10)
+
+    if response.status_code == 429:
+        return "Place lookup is temporarily busy. Showing coordinates only."
+
+    if response.status_code == 404:
+        return "Unknown place"
+
+    response.raise_for_status()
+    data = response.json()
+
+    if data.get("display_name"):
+        return data["display_name"]
+
+    return "Unknown place"
+
+
+def validate_coordinates(latitude_text, longitude_text):
+    """Validate latitude and longitude entered as text."""
+
+    latitude_text = latitude_text.strip()
+    longitude_text = longitude_text.strip()
+
+    if not latitude_text and not longitude_text:
+        return None, None, "Please enter both latitude and longitude."
+
+    if latitude_text and not longitude_text:
+        return None, None, "Please enter longitude also, or use city name instead."
+
+    if longitude_text and not latitude_text:
+        return None, None, "Please enter latitude also, or use city name instead."
+
+    try:
+        latitude = float(latitude_text)
+        longitude = float(longitude_text)
+    except ValueError:
+        return None, None, "Latitude and longitude must be valid numbers. Example: 12.9716 and 77.5946."
+
+    if latitude < -90 or latitude > 90:
+        return None, None, "Latitude must be between -90 and 90."
+
+    if longitude < -180 or longitude > 180:
+        return None, None, "Longitude must be between -180 and 180."
+
+    return latitude, longitude, None
+
 
 @st.cache_data(ttl=600)
 def get_weather(latitude, longitude):
@@ -138,9 +202,10 @@ input_method = st.radio(
     horizontal=True
 )
 
-city_name = ""
 latitude = None
 longitude = None
+latitude_input = ""
+longitude_input = ""
 display_location = ""
 
 if input_method == "City name":
@@ -154,18 +219,16 @@ else:
     col_a, col_b = st.columns(2)
 
     with col_a:
-        latitude = st.number_input(
+        latitude_input = st.text_input(
             "Enter latitude",
-            value=12.9716,
-            format="%.6f",
+            value="",
             help="Example for Bangalore: 12.9716"
         )
 
     with col_b:
-        longitude = st.number_input(
+        longitude_input = st.text_input(
             "Enter longitude",
-            value=77.5946,
-            format="%.6f",
+            value="",
             help="Example for Bangalore: 77.5946"
         )
 
@@ -199,9 +262,21 @@ if st.button("Get Weather"):
             display_location = ", ".join(display_location_parts)
 
         else:
-            display_location = f"Latitude {latitude}, Longitude {longitude}"
+            latitude, longitude, coordinate_error = validate_coordinates(
+                latitude_input,
+                longitude_input
+            )
 
-        st.info(f"Using coordinates: Latitude {latitude}, Longitude {longitude}")
+            if coordinate_error:
+                st.error(coordinate_error)
+                st.stop()
+
+            place_name = reverse_geocode(latitude, longitude)
+            display_location = place_name
+
+        st.info(f"Using location: {display_location} | "
+                f"Latitude {latitude}, Longitude {longitude}"
+            )
 
         st.map(
             {
