@@ -223,55 +223,54 @@ with st.expander("How this app works"):
         5. The app displays weather cards, rain probability, weather advice, and hourly trends.
         """
     )
+###
 
+st.subheader("Location Input")
 
-    st.subheader("Location Input")
+input_method = st.radio(
+    "How do you want to search?",
+    ["City name", "Coordinates"],
+    horizontal=True
+)
 
-    input_method = st.radio(
-        "How do you want to search?",
-        ["City name", "Coordinates"],
-        horizontal=True
-    )
+if "location_results" not in st.session_state:
+    st.session_state.location_results = []
 
-    if "location_results" not in st.session_state:
-        st.session_state.location_results = []
+if "last_city_search" not in st.session_state:
+    st.session_state.last_city_search = ""
 
-    if "last_city_search" not in st.session_state:
-        st.session_state.last_city_search = ""
-
-    city_name = ""
-    latitude = None
-    longitude = None
-    latitude_input = ""
-    longitude_input = ""
-    display_location = ""
-    selected_location = None
+city_name = ""
+latitude = None
+longitude = None
+latitude_input = ""
+longitude_input = ""
+display_location = ""
+selected_location = None
 
 if input_method == "City name":
     city_name = st.text_input(
         "Enter city name or specific place name",
-        value="Bangalore",
+        value="Bengaluru, India",
         help="Example: Bengaluru, Mysuru, Kochi, Delhi, London. Do not enter only a state like Karnataka."
     )
 
     st.caption(
-        "Tip: If the result looks wrong, try the current official city name. "
-        "Example: try Mysuru instead of Mysore."
+        "Tip: If the result looks wrong, try a more specific name. "
+        "Example: Bengaluru, India or Mysuru, India."
     )
 
-    if st.button("Find Locations"):
-        if not city_name.strip():
-            st.error("Please enter a city name.")
-            st.stop()
+    search_text = city_name.strip()
 
-        location_results = geocode_city(city_name.strip())
+    if search_text and search_text != st.session_state.last_city_search:
+        location_results = geocode_city(search_text)
 
         if isinstance(location_results, dict) and "error" in location_results:
             st.warning(location_results["message"])
-            st.stop()
-
-        st.session_state.location_results = location_results
-        st.session_state.last_city_search = city_name.strip()
+            st.session_state.location_results = []
+            st.session_state.last_city_search = search_text
+        else:
+            st.session_state.location_results = location_results
+            st.session_state.last_city_search = search_text
 
     if st.session_state.location_results:
         st.write(f"Showing matches for: {st.session_state.last_city_search}")
@@ -315,17 +314,18 @@ else:
         latitude_input = st.text_input(
             "Enter latitude",
             value="",
-            help="Example for Bangalore: 12.9716"
+            help="Example for Bengaluru: 12.9716"
         )
 
     with col_b:
         longitude_input = st.text_input(
             "Enter longitude",
             value="",
-            help="Example for Bangalore: 77.5946"
+            help="Example for Bengaluru: 77.5946"
         )
 
 
+####
 if st.button("Get Weather"):
     try:
         if input_method == "City name":
