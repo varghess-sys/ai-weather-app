@@ -102,8 +102,8 @@ def validate_coordinates(latitude_text, longitude_text):
     try:
         latitude = float(latitude_text)
         longitude = float(longitude_text)
-    except ValueError:
-        return None, None, "Latitude and longitude must be valid numbers. Example: 12.9716 and 77.5946."
+    except Exception as e:
+        st.error(f"Something went wrong: {e}")
 
     if latitude < -90 or latitude > 90:
         return None, None, "Latitude must be between -90 and 90."
@@ -157,32 +157,60 @@ def get_weather(latitude, longitude):
     return response.json()
 
 
-def make_simple_advice(temperature, humidity, rain_probability, wind_speed):
-    advice = []
+def build_weather_advisor(temperature, feels_like, humidity, rain_probability, wind_speed):
+    summary_parts = []
+    advice_parts = []
 
-    if temperature >= 32:
-        advice.append("It is quite hot. Carry water and avoid too much direct sun.")
-    elif temperature >= 25:
-        advice.append("The temperature is warm.")
+    if temperature >= 35:
+        summary_parts.append("Very hot")
+        advice_parts.append("Avoid long exposure to direct sun and carry water.")
+    elif temperature >= 30:
+        summary_parts.append("Hot")
+        advice_parts.append("It is warm outside, so stay hydrated.")
+    elif temperature >= 24:
+        summary_parts.append("Warm")
+        advice_parts.append("The temperature is comfortable to warm.")
+    elif temperature >= 18:
+        summary_parts.append("Cool")
+        advice_parts.append("The weather is relatively cool.")
     else:
-        advice.append("The weather is relatively cool.")
+        summary_parts.append("Cold")
+        advice_parts.append("You may need an extra layer if going out.")
 
-    if humidity >= 70:
-        advice.append("Humidity is high, so it may feel sticky or uncomfortable.")
+    if feels_like - temperature >= 3:
+        summary_parts.append("Feels warmer")
+        advice_parts.append("It may feel warmer than the actual temperature.")
+
+    if humidity >= 80:
+        summary_parts.append("Very humid")
+        advice_parts.append("High humidity may make it feel sticky and uncomfortable.")
+    elif humidity >= 65:
+        summary_parts.append("Humid")
+        advice_parts.append("Humidity is noticeable, so outdoor activity may feel slightly tiring.")
     else:
-        advice.append("Humidity is moderate.")
+        summary_parts.append("Comfortable humidity")
 
-    if rain_probability >= 60:
-        advice.append("There is a good chance of rain today, so carry an umbrella.")
-    elif rain_probability >= 30:
-        advice.append("There is some chance of rain today.")
+    if rain_probability >= 70:
+        summary_parts.append("High rain risk")
+        advice_parts.append("Carry an umbrella or rain protection.")
+    elif rain_probability >= 40:
+        summary_parts.append("Moderate rain risk")
+        advice_parts.append("There is some chance of rain, so check before stepping out.")
     else:
-        advice.append("Rain chance looks low for now.")
+        summary_parts.append("Low rain risk")
 
-    if wind_speed >= 20:
-        advice.append("It may feel windy outside.")
+    if wind_speed >= 25:
+        summary_parts.append("Windy")
+        advice_parts.append("Expect noticeable wind outside.")
+    elif wind_speed >= 15:
+        summary_parts.append("Breezy")
+    else:
+        summary_parts.append("Light wind")
 
-    return " ".join(advice)
+    summary = " • ".join(summary_parts)
+    advisor = " ".join(advice_parts)
+
+    return summary, advisor
 
 
 with st.expander("How this app works"):
@@ -391,14 +419,21 @@ if st.button("Get Weather"):
             st.metric("High / Low", f"{today_high} / {today_low} °C")
 
         # Advisor section
-        advice = make_simple_advice(
+        weather_summary, advisor_text = build_weather_advisor(
             temperature,
+            feels_like,
             humidity,
             rain_probability_max,
             wind_speed,
         )
 
-        st.info(f"Advisor: {advice}")
+        advisor_col1, advisor_col2 = st.columns([1, 2])
+
+        with advisor_col1:
+            st.info(f"Weather Summary: {weather_summary}")
+
+        with advisor_col2:
+            st.info(f"Advisor: {advisor_text}")
 
         # Hourly dataframe
         hourly_df = pd.DataFrame(
@@ -461,8 +496,8 @@ if st.button("Get Weather"):
         with st.expander("Raw API Response"):
             st.json(current)
 
-    except ValueError:
-        st.error("Latitude and longitude must be valid numbers. Example: 12.9716 and 77.5946")
+    except Exception as e:
+        st.error(f"Something went wrong: {e}")
 
     except Exception as e:
         st.error(f"Something went wrong: {e}")
