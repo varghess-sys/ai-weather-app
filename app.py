@@ -391,6 +391,38 @@ if st.button("Get Weather"):
         today_low = daily["temperature_2m_min"][0]
         rain_probability_max = daily["precipitation_probability_max"][0]
 
+        # Calculate high and low temperature so far today
+                
+        current_time = pd.to_datetime(current["time"])
+
+        so_far_df = pd.DataFrame(
+            {
+                "Time": pd.to_datetime(hourly["time"]),
+                "Temperature °C": hourly["temperature_2m"],
+            }
+        )
+
+        so_far_df = so_far_df[so_far_df["Time"] <= current_time]
+
+        if so_far_df.empty:
+            so_far_df = pd.DataFrame(
+                {
+                    "Time": [pd.to_datetime(current["time"])],
+                    "Temperature °C": [temperature],
+                }
+            )
+
+        high_so_far = so_far_df["Temperature °C"].max()
+        low_so_far = so_far_df["Temperature °C"].min()
+
+        high_so_far_time = so_far_df.loc[
+            so_far_df["Temperature °C"].idxmax(), "Time"
+        ].strftime("%I:%M %p").lstrip("0")
+
+        low_so_far_time = so_far_df.loc[
+            so_far_df["Temperature °C"].idxmin(), "Time"
+        ].strftime("%I:%M %p").lstrip("0")
+
         st.subheader(f"Weather dashboard: {display_location}")
 
         st.caption(
@@ -416,7 +448,8 @@ if st.button("Get Weather"):
             st.metric("Wind", f"{wind_speed} km/h")
 
         with col6:
-            st.metric("High / Low", f"{today_high} / {today_low} °C")
+            st.metric("So Far High / Low", f"{high_so_far:.1f} / {low_so_far:.1f} °C")
+            st.caption(f"High: {high_so_far_time} | Low: {low_so_far_time}")
 
         # Advisor section
         weather_summary, advisor_text = build_weather_advisor(
