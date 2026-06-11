@@ -102,8 +102,8 @@ def validate_coordinates(latitude_text, longitude_text):
     try:
         latitude = float(latitude_text)
         longitude = float(longitude_text)
-    except ValueError:
-        return None, None, "Latitude and longitude must be valid numbers. Example: 12.9716 and 77.5946."
+    except Exception as e:
+        st.error(f"Something went wrong: {e}")
 
     if latitude < -90 or latitude > 90:
         return None, None, "Latitude must be between -90 and 90."
@@ -157,32 +157,60 @@ def get_weather(latitude, longitude):
     return response.json()
 
 
-def make_simple_advice(temperature, humidity, rain_probability, wind_speed):
-    advice = []
+def build_weather_advisor(temperature, feels_like, humidity, rain_probability, wind_speed):
+    summary_parts = []
+    advice_parts = []
 
-    if temperature >= 32:
-        advice.append("It is quite hot. Carry water and avoid too much direct sun.")
-    elif temperature >= 25:
-        advice.append("The temperature is warm.")
+    if temperature >= 35:
+        summary_parts.append("Very hot")
+        advice_parts.append("Avoid long exposure to direct sun and carry water.")
+    elif temperature >= 30:
+        summary_parts.append("Hot")
+        advice_parts.append("It is warm outside, so stay hydrated.")
+    elif temperature >= 24:
+        summary_parts.append("Warm")
+        advice_parts.append("The temperature is comfortable to warm.")
+    elif temperature >= 18:
+        summary_parts.append("Cool")
+        advice_parts.append("The weather is relatively cool.")
     else:
-        advice.append("The weather is relatively cool.")
+        summary_parts.append("Cold")
+        advice_parts.append("You may need an extra layer if going out.")
 
-    if humidity >= 70:
-        advice.append("Humidity is high, so it may feel sticky or uncomfortable.")
+    if feels_like - temperature >= 3:
+        summary_parts.append("Feels warmer")
+        advice_parts.append("It may feel warmer than the actual temperature.")
+
+    if humidity >= 80:
+        summary_parts.append("Very humid")
+        advice_parts.append("High humidity may make it feel sticky and uncomfortable.")
+    elif humidity >= 65:
+        summary_parts.append("Humid")
+        advice_parts.append("Humidity is noticeable, so outdoor activity may feel slightly tiring.")
     else:
-        advice.append("Humidity is moderate.")
+        summary_parts.append("Comfortable humidity")
 
-    if rain_probability >= 60:
-        advice.append("There is a good chance of rain today, so carry an umbrella.")
-    elif rain_probability >= 30:
-        advice.append("There is some chance of rain today.")
+    if rain_probability >= 70:
+        summary_parts.append("High rain risk")
+        advice_parts.append("Carry an umbrella or rain protection.")
+    elif rain_probability >= 40:
+        summary_parts.append("Moderate rain risk")
+        advice_parts.append("There is some chance of rain, so check before stepping out.")
     else:
-        advice.append("Rain chance looks low for now.")
+        summary_parts.append("Low rain risk")
 
-    if wind_speed >= 20:
-        advice.append("It may feel windy outside.")
+    if wind_speed >= 25:
+        summary_parts.append("Windy")
+        advice_parts.append("Expect noticeable wind outside.")
+    elif wind_speed >= 15:
+        summary_parts.append("Breezy")
+    else:
+        summary_parts.append("Light wind")
 
-    return " ".join(advice)
+    summary = " • ".join(summary_parts)
+    advisor = " ".join(advice_parts)
+
+    return summary, advisor
 
 
 with st.expander("How this app works"):
@@ -195,55 +223,54 @@ with st.expander("How this app works"):
         5. The app displays weather cards, rain probability, weather advice, and hourly trends.
         """
     )
+###
 
+st.subheader("Location Input")
 
-    st.subheader("Location Input")
+input_method = st.radio(
+    "How do you want to search?",
+    ["City name", "Coordinates"],
+    horizontal=True
+)
 
-    input_method = st.radio(
-        "How do you want to search?",
-        ["City name", "Coordinates"],
-        horizontal=True
-    )
+if "location_results" not in st.session_state:
+    st.session_state.location_results = []
 
-    if "location_results" not in st.session_state:
-        st.session_state.location_results = []
+if "last_city_search" not in st.session_state:
+    st.session_state.last_city_search = ""
 
-    if "last_city_search" not in st.session_state:
-        st.session_state.last_city_search = ""
-
-    city_name = ""
-    latitude = None
-    longitude = None
-    latitude_input = ""
-    longitude_input = ""
-    display_location = ""
-    selected_location = None
+city_name = ""
+latitude = None
+longitude = None
+latitude_input = ""
+longitude_input = ""
+display_location = ""
+selected_location = None
 
 if input_method == "City name":
     city_name = st.text_input(
         "Enter city name or specific place name",
-        value="Bangalore",
+        value="Bengaluru, India",
         help="Example: Bengaluru, Mysuru, Kochi, Delhi, London. Do not enter only a state like Karnataka."
     )
 
     st.caption(
-        "Tip: If the result looks wrong, try the current official city name. "
-        "Example: try Mysuru instead of Mysore."
+        "Tip: If the result looks wrong, try a more specific name. "
+        "Example: Bengaluru, India or Mysuru, India."
     )
 
-    if st.button("Find Locations"):
-        if not city_name.strip():
-            st.error("Please enter a city name.")
-            st.stop()
+    search_text = city_name.strip()
 
-        location_results = geocode_city(city_name.strip())
+    if search_text and search_text != st.session_state.last_city_search:
+        location_results = geocode_city(search_text)
 
         if isinstance(location_results, dict) and "error" in location_results:
             st.warning(location_results["message"])
-            st.stop()
-
-        st.session_state.location_results = location_results
-        st.session_state.last_city_search = city_name.strip()
+            st.session_state.location_results = []
+            st.session_state.last_city_search = search_text
+        else:
+            st.session_state.location_results = location_results
+            st.session_state.last_city_search = search_text
 
     if st.session_state.location_results:
         st.write(f"Showing matches for: {st.session_state.last_city_search}")
@@ -287,17 +314,18 @@ else:
         latitude_input = st.text_input(
             "Enter latitude",
             value="",
-            help="Example for Bangalore: 12.9716"
+            help="Example for Bengaluru: 12.9716"
         )
 
     with col_b:
         longitude_input = st.text_input(
             "Enter longitude",
             value="",
-            help="Example for Bangalore: 77.5946"
+            help="Example for Bengaluru: 77.5946"
         )
 
 
+####
 if st.button("Get Weather"):
     try:
         if input_method == "City name":
@@ -363,6 +391,38 @@ if st.button("Get Weather"):
         today_low = daily["temperature_2m_min"][0]
         rain_probability_max = daily["precipitation_probability_max"][0]
 
+        # Calculate high and low temperature so far today
+                
+        current_time = pd.to_datetime(current["time"])
+
+        so_far_df = pd.DataFrame(
+            {
+                "Time": pd.to_datetime(hourly["time"]),
+                "Temperature °C": hourly["temperature_2m"],
+            }
+        )
+
+        so_far_df = so_far_df[so_far_df["Time"] <= current_time]
+
+        if so_far_df.empty:
+            so_far_df = pd.DataFrame(
+                {
+                    "Time": [pd.to_datetime(current["time"])],
+                    "Temperature °C": [temperature],
+                }
+            )
+
+        high_so_far = so_far_df["Temperature °C"].max()
+        low_so_far = so_far_df["Temperature °C"].min()
+
+        high_so_far_time = so_far_df.loc[
+            so_far_df["Temperature °C"].idxmax(), "Time"
+        ].strftime("%I:%M %p").lstrip("0")
+
+        low_so_far_time = so_far_df.loc[
+            so_far_df["Temperature °C"].idxmin(), "Time"
+        ].strftime("%I:%M %p").lstrip("0")
+
         st.subheader(f"Weather dashboard: {display_location}")
 
         st.caption(
@@ -388,17 +448,25 @@ if st.button("Get Weather"):
             st.metric("Wind", f"{wind_speed} km/h")
 
         with col6:
-            st.metric("High / Low", f"{today_high} / {today_low} °C")
+            st.metric("So Far High / Low", f"{high_so_far:.1f} / {low_so_far:.1f} °C")
+            st.caption(f"High: {high_so_far_time} | Low: {low_so_far_time}")
 
         # Advisor section
-        advice = make_simple_advice(
+        weather_summary, advisor_text = build_weather_advisor(
             temperature,
+            feels_like,
             humidity,
             rain_probability_max,
             wind_speed,
         )
 
-        st.info(f"Advisor: {advice}")
+        advisor_col1, advisor_col2 = st.columns([1, 2])
+
+        with advisor_col1:
+            st.info(f"Weather Summary: {weather_summary}")
+
+        with advisor_col2:
+            st.info(f"Advisor: {advisor_text}")
 
         # Hourly dataframe
         hourly_df = pd.DataFrame(
@@ -461,8 +529,8 @@ if st.button("Get Weather"):
         with st.expander("Raw API Response"):
             st.json(current)
 
-    except ValueError:
-        st.error("Latitude and longitude must be valid numbers. Example: 12.9716 and 77.5946")
+    except Exception as e:
+        st.error(f"Something went wrong: {e}")
 
     except Exception as e:
         st.error(f"Something went wrong: {e}")
