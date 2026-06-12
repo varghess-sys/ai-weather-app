@@ -16,7 +16,7 @@ st.write(
 
 @st.cache_data(ttl=86400)
 def geocode_city(city_name):
-    st.caption("Tip: If the result looks wrong, try the current official city name, for example Mysuru instead of Mysore.")
+   ## st.caption("Tip: If the result looks wrong, try the current official city name, for example Mysuru instead of Mysore.")
     """Find latitude and longitude for a city name using Open-Meteo Geocoding API."""
 
     url = "https://geocoding-api.open-meteo.com/v1/search"
@@ -141,6 +141,7 @@ def get_weather(latitude, longitude):
             "temperature_2m_min,"
             "precipitation_probability_max"
         ),
+        "past_days": 1,
         "forecast_days": 2,
         "timezone": "auto",
     }
@@ -242,7 +243,7 @@ if "last_city_search" not in st.session_state:
 city_name = ""
 latitude = None
 longitude = None
-latitude_input = ""
+latitude_input = "" 
 longitude_input = ""
 display_location = ""
 selected_location = None
@@ -462,6 +463,8 @@ if st.button("Get Weather"):
 
         advisor_col1, advisor_col2 = st.columns([1, 2])
 
+
+
         with advisor_col1:
             st.info(f"Weather Summary: {weather_summary}")
 
@@ -481,17 +484,64 @@ if st.button("Get Weather"):
 
         hourly_df["Hour"] = hourly_df["Time"].dt.strftime("%I %p")
 
+  # Last 24 hours summary
+        current_time = pd.to_datetime(current["time"])
+        last_24_start = current_time - pd.Timedelta(hours=24)
+
+        last_24_df = hourly_df[
+            (hourly_df["Time"] >= last_24_start) &
+            (hourly_df["Time"] <= current_time)
+        ]
+
+        if last_24_df.empty:
+            last_24_df = hourly_df.head(1)
+
+        rain_last_24h = last_24_df["Rain mm"].sum()
+        high_last_24h = last_24_df["Temperature °C"].max()
+        low_last_24h = last_24_df["Temperature °C"].min()
+        max_wind_last_24h = last_24_df["Wind Speed km/h"].max()
+
+        high_last_24h_time = last_24_df.loc[
+            last_24_df["Temperature °C"].idxmax(), "Time"
+        ].strftime("%I:%M %p").lstrip("0")
+
+        low_last_24h_time = last_24_df.loc[
+            last_24_df["Temperature °C"].idxmin(), "Time"
+        ].strftime("%I:%M %p").lstrip("0")
+
+        max_wind_last_24h_time = last_24_df.loc[
+            last_24_df["Wind Speed km/h"].idxmax(), "Time"
+        ].strftime("%I:%M %p").lstrip("0")
+
+        st.subheader("Last 24 Hours Summary")
+
+        last_col1, last_col2, last_col3, last_col4 = st.columns(4)
+
+        with last_col1:
+            st.metric("Rainfall", f"{rain_last_24h:.1f} mm")
+
+        with last_col2:
+            st.metric("Highest Temp", f"{high_last_24h:.1f} °C")
+            st.caption(f"At {high_last_24h_time}")
+
+        with last_col3:
+            st.metric("Lowest Temp", f"{low_last_24h:.1f} °C")
+            st.caption(f"At {low_last_24h_time}")
+
+        with last_col4:
+            st.metric("Max Wind", f"{max_wind_last_24h:.1f} km/h")
+            st.caption(f"At {max_wind_last_24h_time}")
+      
+        hourly_df["Hour"] = hourly_df["Time"].dt.strftime("%I %p")
+
         # Keep charts compact by showing only the next 12 hours
         current_time = pd.to_datetime(current["time"])
-        
-
+      
         compact_hourly_df = hourly_df[hourly_df["Time"] >= current_time].head(12)
 
         if compact_hourly_df.empty:
             compact_hourly_df = hourly_df.head(12)
-
         
-
         st.subheader("Next 12 hours from now")
 
         chart_col1, chart_col2, chart_col3 = st.columns(3)
@@ -532,5 +582,4 @@ if st.button("Get Weather"):
     except Exception as e:
         st.error(f"Something went wrong: {e}")
 
-    except Exception as e:
-        st.error(f"Something went wrong: {e}")
+
