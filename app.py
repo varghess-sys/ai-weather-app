@@ -142,7 +142,7 @@ def get_weather(latitude, longitude):
             "precipitation_probability_max"
         ),
         "past_days": 1,
-        "forecast_days": 2,
+        "forecast_days": 4,
         "timezone": "auto",
     }
 
@@ -449,7 +449,7 @@ if st.button("Get Weather"):
             st.metric("Wind", f"{wind_speed} km/h")
 
         with col6:
-            st.metric("So Far High / Low", f"{high_so_far:.1f} / {low_so_far:.1f} °C")
+            st.metric("Today So Far High / Low", f"{high_so_far:.1f} / {low_so_far:.1f} °C")
             st.caption(f"High: {high_so_far_time} | Low: {low_so_far_time}")
 
         # Advisor section
@@ -483,6 +483,68 @@ if st.button("Get Weather"):
         )
 
         hourly_df["Hour"] = hourly_df["Time"].dt.strftime("%I %p")
+        hourly_df = pd.DataFrame(
+    {
+        "Time": pd.to_datetime(hourly["time"]),
+        "Temperature °C": hourly["temperature_2m"],
+        "Rain Probability %": hourly["precipitation_probability"],
+        "Rain mm": hourly["precipitation"],
+        "Wind Speed km/h": hourly["wind_speed_10m"],
+    }
+)
+
+        hourly_df["Hour"] = hourly_df["Time"].dt.strftime("%I %p")
+
+        # Rolling time windows
+        current_time = pd.to_datetime(current["time"])
+
+        last_24h_df = hourly_df[
+            (hourly_df["Time"] >= current_time - pd.Timedelta(hours=24)) &
+            (hourly_df["Time"] <= current_time)
+        ]
+
+        next_24h_df = hourly_df[
+            (hourly_df["Time"] > current_time) &
+            (hourly_df["Time"] <= current_time + pd.Timedelta(hours=24))
+        ]
+
+        next_48h_df = hourly_df[
+            (hourly_df["Time"] > current_time) &
+            (hourly_df["Time"] <= current_time + pd.Timedelta(hours=48))
+        ]
+
+        next_72h_df = hourly_df[
+            (hourly_df["Time"] > current_time) &
+            (hourly_df["Time"] <= current_time + pd.Timedelta(hours=72))
+        ]
+
+        def calculate_forecast_summary(window_df):
+            if window_df.empty:
+                return {
+                    "rainfall": 0,
+                    "max_rain_probability": 0,
+                    "high_temp": 0,
+                    "low_temp": 0,
+                    "max_wind": 0,
+                }
+
+            return {
+                "rainfall": window_df["Rain mm"].sum(),
+                "max_rain_probability": window_df["Rain Probability %"].max(),
+                "high_temp": window_df["Temperature °C"].max(),
+                "low_temp": window_df["Temperature °C"].min(),
+                "max_wind": window_df["Wind Speed km/h"].max(),
+            }
+
+        next_24h_summary = calculate_forecast_summary(next_24h_df)
+        next_48h_summary = calculate_forecast_summary(next_48h_df)
+        next_72h_summary = calculate_forecast_summary(next_72h_df)
+
+
+        last_24h_rain = last_24h_df["Rain mm"].sum()
+        last_24h_high = last_24h_df["Temperature °C"].max()
+        last_24h_low = last_24h_df["Temperature °C"].min()
+        last_24h_max_wind = last_24h_df["Wind Speed km/h"].max()
 
   # Last 24 hours summary
         current_time = pd.to_datetime(current["time"])
@@ -513,7 +575,9 @@ if st.button("Get Weather"):
             last_24_df["Wind Speed km/h"].idxmax(), "Time"
         ].strftime("%I:%M %p").lstrip("0")
 
-        st.subheader("Last 24 Hours Summary")
+        ####
+
+        st.subheader("Rolling Last 24 Hours Summarys")
 
         last_col1, last_col2, last_col3, last_col4 = st.columns(4)
 
@@ -533,6 +597,32 @@ if st.button("Get Weather"):
             st.caption(f"At {max_wind_last_24h_time}")
       
         hourly_df["Hour"] = hourly_df["Time"].dt.strftime("%I %p")
+
+        ####
+        st.subheader("Forecast Summary")
+
+        forecast_col1, forecast_col2, forecast_col3 = st.columns(3)
+
+        with forecast_col1:
+            st.markdown("### Next 24 Hours")
+            st.metric("Expected Rainfall", f"{next_24h_summary['rainfall']:.1f} mm")
+            st.metric("Max Rain Chance", f"{next_24h_summary['max_rain_probability']:.0f}%")
+            st.metric("High / Low", f"{next_24h_summary['high_temp']:.1f} / {next_24h_summary['low_temp']:.1f} °C")
+            st.metric("Max Wind", f"{next_24h_summary['max_wind']:.1f} km/h")
+
+        with forecast_col2:
+            st.markdown("### Next 48 Hours")
+            st.metric("Expected Rainfall", f"{next_48h_summary['rainfall']:.1f} mm")
+            st.metric("Max Rain Chance", f"{next_48h_summary['max_rain_probability']:.0f}%")
+            st.metric("High / Low", f"{next_48h_summary['high_temp']:.1f} / {next_48h_summary['low_temp']:.1f} °C")
+            st.metric("Max Wind", f"{next_48h_summary['max_wind']:.1f} km/h")
+
+        with forecast_col3:
+            st.markdown("### Next 72 Hours")
+            st.metric("Expected Rainfall", f"{next_72h_summary['rainfall']:.1f} mm")
+            st.metric("Max Rain Chance", f"{next_72h_summary['max_rain_probability']:.0f}%")
+            st.metric("High / Low", f"{next_72h_summary['high_temp']:.1f} / {next_72h_summary['low_temp']:.1f} °C")
+            st.metric("Max Wind", f"{next_72h_summary['max_wind']:.1f} km/h")
 
         # Keep charts compact by showing only the next 12 hours
         current_time = pd.to_datetime(current["time"])
