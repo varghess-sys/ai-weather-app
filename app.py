@@ -142,7 +142,7 @@ def get_weather(latitude, longitude):
             "precipitation_probability_max"
         ),
         "past_days": 1,
-        "forecast_days": 2,
+        "forecast_days": 4,
         "timezone": "auto",
     }
 
@@ -449,7 +449,7 @@ if st.button("Get Weather"):
             st.metric("Wind", f"{wind_speed} km/h")
 
         with col6:
-            st.metric("So Far High / Low", f"{high_so_far:.1f} / {low_so_far:.1f} °C")
+            st.metric("Today So Far High / Low", f"{high_so_far:.1f} / {low_so_far:.1f} °C")
             st.caption(f"High: {high_so_far_time} | Low: {low_so_far_time}")
 
         # Advisor section
@@ -483,6 +483,46 @@ if st.button("Get Weather"):
         )
 
         hourly_df["Hour"] = hourly_df["Time"].dt.strftime("%I %p")
+        hourly_df = pd.DataFrame(
+    {
+        "Time": pd.to_datetime(hourly["time"]),
+        "Temperature °C": hourly["temperature_2m"],
+        "Rain Probability %": hourly["precipitation_probability"],
+        "Rain mm": hourly["precipitation"],
+        "Wind Speed km/h": hourly["wind_speed_10m"],
+    }
+)
+
+        hourly_df["Hour"] = hourly_df["Time"].dt.strftime("%I %p")
+
+        # Rolling time windows
+        current_time = pd.to_datetime(current["time"])
+
+        last_24h_df = hourly_df[
+            (hourly_df["Time"] >= current_time - pd.Timedelta(hours=24)) &
+            (hourly_df["Time"] <= current_time)
+        ]
+
+        next_24h_df = hourly_df[
+            (hourly_df["Time"] > current_time) &
+            (hourly_df["Time"] <= current_time + pd.Timedelta(hours=24))
+        ]
+
+        next_48h_df = hourly_df[
+            (hourly_df["Time"] > current_time) &
+            (hourly_df["Time"] <= current_time + pd.Timedelta(hours=48))
+        ]
+
+        next_72h_df = hourly_df[
+            (hourly_df["Time"] > current_time) &
+            (hourly_df["Time"] <= current_time + pd.Timedelta(hours=72))
+        ]
+
+        last_24h_rain = last_24h_df["Rain mm"].sum()
+        last_24h_high = last_24h_df["Temperature °C"].max()
+        last_24h_low = last_24h_df["Temperature °C"].min()
+        last_24h_max_wind = last_24h_df["Wind Speed km/h"].max()
+
 
   # Last 24 hours summary
         current_time = pd.to_datetime(current["time"])
@@ -513,7 +553,7 @@ if st.button("Get Weather"):
             last_24_df["Wind Speed km/h"].idxmax(), "Time"
         ].strftime("%I:%M %p").lstrip("0")
 
-        st.subheader("Last 24 Hours Summary")
+        st.subheader("Rolling Last 24 Hours Summary")
 
         last_col1, last_col2, last_col3, last_col4 = st.columns(4)
 
