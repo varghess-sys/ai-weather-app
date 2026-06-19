@@ -157,6 +157,30 @@ def get_weather(latitude, longitude):
     response.raise_for_status()
     return response.json()
 
+    def build_forecast_advice(summary):
+        advice = []
+
+        if summary["max_rain_chance"] >= 70:
+            advice.append("Rain risk is high. Carry an umbrella or rain protection.")
+        elif summary["max_rain_chance"] >= 40:
+            advice.append("There is some chance of rain.")
+
+        if summary["expected_rainfall"] >= 20:
+            advice.append("Heavy rainfall is expected.")
+        elif summary["expected_rainfall"] >= 5:
+            advice.append("Light to moderate rainfall is expected.")
+
+        if summary["high_temp"] >= 32:
+            advice.append("Weather may feel hot during the day.")
+
+        if summary["max_wind"] >= 20:
+            advice.append("Windy conditions are expected.")
+
+        if not advice:
+            advice.append("Weather looks generally stable.")
+
+        return " ".join(advice)
+
 
 def build_weather_advisor(temperature, feels_like, humidity, rain_probability, wind_speed):
     summary_parts = []
@@ -213,6 +237,25 @@ def build_weather_advisor(temperature, feels_like, humidity, rain_probability, w
 
     return summary, advisor
 
+###
+def build_forecast_advice(summary):
+    advice = []
+
+    if summary["max_rain_probability"] >= 70 or summary["rainfall"] >= 5:
+        advice.append("Rain risk is high. Carry an umbrella or rain protection.")
+    elif summary["max_rain_probability"] >= 40:
+        advice.append("Some rain is possible. Check before stepping out.")
+    else:
+        advice.append("Rain risk looks low.")
+
+    if summary["max_wind"] >= 25:
+        advice.append("It may be windy, so be careful with outdoor plans.")
+
+    if summary["high_temp"] >= 35:
+        advice.append("Heat may be uncomfortable. Stay hydrated.")
+
+    return " ".join(advice)
+###
 
 with st.expander("How this app works"):
     st.write(
@@ -629,6 +672,22 @@ if st.button("Get Weather"):
             st.metric("Max Rain Chance", f"{next_72h_summary['max_rain_probability']:.0f}%")
             st.metric("High / Low", f"{next_72h_summary['high_temp']:.1f} / {next_72h_summary['low_temp']:.1f} °C")
             st.metric("Max Wind", f"{next_72h_summary['max_wind']:.1f} km/h")
+
+        st.subheader("Forecast Advice")
+
+        advice_col1, advice_col2, advice_col3 = st.columns(3)
+
+        with advice_col1:
+            st.info(f"Next 24 Hours: {build_forecast_advice(next_24h_summary)}")
+
+        with advice_col2:
+            st.info(f"Next 48 Hours: {build_forecast_advice(next_48h_summary)}")
+
+        with advice_col3:
+            st.info(f"Next 72 Hours: {build_forecast_advice(next_72h_summary)}")
+
+
+            
 
         # Keep charts compact by showing only the next 12 hours
         current_time = pd.to_datetime(current["time"])
