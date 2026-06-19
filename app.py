@@ -579,27 +579,31 @@ if st.button("Get Weather"):
 
         ####
 
-        st.subheader("Rolling Last 24 Hours Summarys")
+        st.subheader("Rolling Last 24 Hours Summary")
 
-        last_col1, last_col2, last_col3, last_col4 = st.columns(4)
+        last_row1_col1, last_row1_col2, last_row1_col3 = st.columns(3)
 
-        with last_col1:
+        with last_row1_col1:
             st.metric("Rainfall", f"{rain_last_24h:.1f} mm")
 
-        with last_col2:
+        with last_row1_col2:
             st.metric("Highest Temp", f"{high_last_24h:.1f} °C")
             st.caption(f"At {high_last_24h_time}")
 
-        with last_col3:
+        with last_row1_col3:
             st.metric("Lowest Temp", f"{low_last_24h:.1f} °C")
             st.caption(f"At {low_last_24h_time}")
 
-        with last_col4:
+        last_row2_col1, last_row2_col2 = st.columns(2)
+
+        with last_row2_col1:
             st.metric("Max Wind", f"{max_wind_last_24h:.1f} km/h")
             st.caption(f"At {max_wind_last_24h_time}")
-      
-        hourly_df["Hour"] = hourly_df["Time"].dt.strftime("%I %p")
 
+        with last_row2_col2:
+            st.empty()
+
+            
         ####
         st.subheader("Forecast Summary")
 
