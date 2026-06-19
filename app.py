@@ -431,25 +431,27 @@ if st.button("Get Weather"):
         )
 
         # Compact top metrics
-        col1, col2, col3, col4, col5, col6 = st.columns(6)
+        row1_col1, row1_col2, row1_col3 = st.columns(3)
 
-        with col1:
+        with row1_col1:
             st.metric("Temp", f"{temperature} °C")
 
-        with col2:
+        with row1_col2:
             st.metric("Feels", f"{feels_like} °C")
 
-        with col3:
+        with row1_col3:
             st.metric("Humidity", f"{humidity}%")
 
-        with col4:
+        row2_col1, row2_col2, row2_col3 = st.columns(3)
+
+        with row2_col1:
             st.metric("Rain Chance", f"{rain_probability_max}%")
 
-        with col5:
+        with row2_col2:
             st.metric("Wind", f"{wind_speed} km/h")
 
-        with col6:
-            st.metric("Today So Far High / Low", f"{high_so_far:.1f} / {low_so_far:.1f} °C")
+        with row2_col3:
+            st.metric("Today High / Low", f"{high_so_far:.1f} / {low_so_far:.1f} °C")
             st.caption(f"High: {high_so_far_time} | Low: {low_so_far_time}")
 
         # Advisor section
