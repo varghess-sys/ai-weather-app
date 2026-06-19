@@ -157,31 +157,7 @@ def get_weather(latitude, longitude):
     response.raise_for_status()
     return response.json()
 
-    def build_forecast_advice(summary):
-        advice = []
-
-        if summary["max_rain_chance"] >= 70:
-            advice.append("Rain risk is high. Carry an umbrella or rain protection.")
-        elif summary["max_rain_chance"] >= 40:
-            advice.append("There is some chance of rain.")
-
-        if summary["expected_rainfall"] >= 20:
-            advice.append("Heavy rainfall is expected.")
-        elif summary["expected_rainfall"] >= 5:
-            advice.append("Light to moderate rainfall is expected.")
-
-        if summary["high_temp"] >= 32:
-            advice.append("Weather may feel hot during the day.")
-
-        if summary["max_wind"] >= 20:
-            advice.append("Windy conditions are expected.")
-
-        if not advice:
-            advice.append("Weather looks generally stable.")
-
-        return " ".join(advice)
-
-
+   
 def build_weather_advisor(temperature, feels_like, humidity, rain_probability, wind_speed):
     summary_parts = []
     advice_parts = []
@@ -237,7 +213,7 @@ def build_weather_advisor(temperature, feels_like, humidity, rain_probability, w
 
     return summary, advisor
 
-###
+### place1
 def build_forecast_advice(summary):
     advice = []
 
@@ -697,7 +673,7 @@ if st.button("Get Weather"):
         if compact_hourly_df.empty:
             compact_hourly_df = hourly_df.head(12)
         
-        st.subheader("Next 12 hours from now")
+        st.subheader("Next 12 hours Trend")
 
         chart_col1, chart_col2, chart_col3 = st.columns(3)
 
