@@ -450,29 +450,44 @@ if st.button("Get Weather"):
         )
 
         # Compact top metrics
-        row1_col1, row1_col2, row1_col3 = st.columns(3)
-
-        with row1_col1:
-            st.metric("Temp", f"{temperature} °C")
-
-        with row1_col2:
-            st.metric("Feels", f"{feels_like} °C")
-
-        with row1_col3:
-            st.metric("Humidity", f"{humidity}%")
-
-        row2_col1, row2_col2, row2_col3 = st.columns(3)
-
-        with row2_col1:
-            st.metric("Rain", f"{rain_probability_max}%")
-
-        with row2_col2:
-            st.metric("Wind", f"{wind_speed} km/h")
-
-        with row2_col3:
-            st.metric("Today H/L", f"{high_so_far:.1f} / {low_so_far:.1f} °C")
-            st.caption(f"High: {high_so_far_time} | Low: {low_so_far_time}")
-
+        st.markdown(
+            f"""
+            <div style="
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 10px;
+                margin-top: 12px;
+                margin-bottom: 18px;
+            ">
+                <div style="background-color:#0f172a; padding:8px; min-height:58px; border-radius:8px;">
+                    <div style="font-size:13px; color:#cbd5e1;">Temp</div>
+                    <div style="font-size:26px; font-weight:700;color:white;">{temperature:.1f} °C</div>
+                </div>
+                <div style="background-color:#0f172a; padding:8px; min-height:58px; border-radius:8px;">
+                    <div style="font-size:13px; color:#cbd5e1;">Feels</div>
+                    <div style="font-size:26px; font-weight:700;color:white;">{feels_like:.1f} °C</div>
+                </div>
+                <div style="background-color:#0f172a; padding:8px; min-height:58px; border-radius:8px;">
+                    <div style="font-size:13px; color:#cbd5e1;">Humidity</div>
+                    <div style="font-size:26px; font-weight:700;color:white;">{humidity}%</div>
+                </div>
+                <div style="background-color:#0f172a; padding:8px; min-height:58px; border-radius:8px;">
+                    <div style="font-size:13px; color:#cbd5e1;">Rain</div>
+                    <div style="font-size:26px; font-weight:700;color:white;">{rain_probability_max}%</div>
+                </div>
+                <div style="background-color:#0f172a; padding:8px; min-height:58px; border-radius:8px;">
+                    <div style="font-size:13px; color:#cbd5e1;">Wind</div>
+                    <div style="font-size:26px; font-weight:700;color:white;">{wind_speed:.1f} km/h</div>
+                </div>
+                <div style="background-color:#0f172a; padding:8px; min-height:58px; border-radius:8px;">
+                    <div style="font-size:13px; color:#cbd5e1;">Today H/L</div>
+                    <div style="font-size:26px; font-weight:700;color:white;">{high_so_far:.1f} / {low_so_far:.1f} °C</div>
+                    <div style="font-size:11px; color:#cbd5e1;">H: {high_so_far_time} | L: {low_so_far_time}</div>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
         # Advisor section
         weather_summary, advisor_text = build_weather_advisor(
             temperature,
