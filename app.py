@@ -384,12 +384,13 @@ if st.button("Get Weather"):
             f"Latitude {latitude}, Longitude {longitude}"
         )
 
-        st.map(
-            {
-                "lat": [latitude],
-                "lon": [longitude],
-            }
-        )
+        with st.expander("View location map"):
+            st.map(
+                {
+                    "lat": [latitude],
+                    "lon": [longitude],
+                }
+            )
 
         weather_data = get_weather(latitude, longitude)
 
