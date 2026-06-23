@@ -464,13 +464,13 @@ if st.button("Get Weather"):
         row2_col1, row2_col2, row2_col3 = st.columns(3)
 
         with row2_col1:
-            st.metric("Rain Chance", f"{rain_probability_max}%")
+            st.metric("Rain", f"{rain_probability_max}%")
 
         with row2_col2:
             st.metric("Wind", f"{wind_speed} km/h")
 
         with row2_col3:
-            st.metric("Today High / Low", f"{high_so_far:.1f} / {low_so_far:.1f} °C")
+            st.metric("Today H/L", f"{high_so_far:.1f} / {low_so_far:.1f} °C")
             st.caption(f"High: {high_so_far_time} | Low: {low_so_far_time}")
 
         # Advisor section
@@ -482,7 +482,7 @@ if st.button("Get Weather"):
             wind_speed,
         )
 
-        advisor_col1, advisor_col2 = st.columns([1, 2])
+        advisor_col1, advisor_col2 = st.columns(2)
 
 
 
@@ -654,15 +654,13 @@ if st.button("Get Weather"):
         advice_col1, advice_col2, advice_col3 = st.columns(3)
 
         with advice_col1:
-            st.info(f"Next 24 Hours: {build_forecast_advice(next_24h_summary)}")
+            st.info(f"24h: {build_forecast_advice(next_24h_summary)}")
 
         with advice_col2:
-            st.info(f"Next 48 Hours: {build_forecast_advice(next_48h_summary)}")
+            st.info(f"48h: {build_forecast_advice(next_48h_summary)}")
 
         with advice_col3:
-            st.info(f"Next 72 Hours: {build_forecast_advice(next_72h_summary)}")
-
-
+            st.info(f"72h: {build_forecast_advice(next_72h_summary)}")
             
 
         # Keep charts compact by showing only the next 12 hours
