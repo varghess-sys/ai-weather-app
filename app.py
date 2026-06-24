@@ -18,7 +18,10 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-st.title("🌤️ Weather Buddy AI")
+st.markdown(
+    "<h2 style='white-space: nowrap;'>🌤️ Weather Buddy AI</h2>",
+    unsafe_allow_html=True,
+)
 st.caption("Version: City name or coordinates input")
 
 st.caption("Search by city name or coordinates.")
