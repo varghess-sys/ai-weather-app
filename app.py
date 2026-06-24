@@ -667,7 +667,7 @@ if st.button("Get Weather"):
             f"""
             <div style="
                 display: grid;
-                grid-template-columns: repeat(3, 1fr);
+                grid-template-columns: repeat(1, 1fr);
                 gap: 6px;
                 margin-top: 10px;
                 margin-bottom: 18px;
@@ -755,7 +755,7 @@ if st.button("Get Weather"):
 
             </div>
             """,
-            height=230,
+            height=460,
         )
         
         # Keep charts compact by showing only the next 12 hours
