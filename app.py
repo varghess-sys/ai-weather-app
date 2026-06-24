@@ -1,17 +1,27 @@
 import pandas as pd
 import requests
 import streamlit as st
+import streamlit.components.v1 as components
+
 ## Test changes
 
 st.set_page_config(page_title="Weather Buddy AI", page_icon="🌤️", layout="wide")
+st.markdown(
+    """
+    <style>
+        .block-container {
+            padding-top: 1rem;
+            padding-bottom: 1rem;
+        }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
 st.title("🌤️ Weather Buddy AI")
 st.caption("Version: City name or coordinates input")
 
-st.write(
-    "Enter a city name, or specific place name, or provide latitude and longitude directly. "
-    "If latitude and longitude are not provided, the app will find them using Open-Meteo's Geocoding API."
-)
+st.caption("Search by city name or coordinates.")
 
 
 @st.cache_data(ttl=86400)
@@ -384,12 +394,13 @@ if st.button("Get Weather"):
             f"Latitude {latitude}, Longitude {longitude}"
         )
 
-        st.map(
-            {
-                "lat": [latitude],
-                "lon": [longitude],
-            }
-        )
+        with st.expander("View location map"):
+            st.map(
+                {
+                    "lat": [latitude],
+                    "lon": [longitude],
+                }
+            )
 
         weather_data = get_weather(latitude, longitude)
 
@@ -455,33 +466,33 @@ if st.button("Get Weather"):
             <div style="
                 display: grid;
                 grid-template-columns: repeat(2, 1fr);
-                gap: 10px;
+                gap: 6px;
                 margin-top: 12px;
-                margin-bottom: 18px;
+                margin-bottom: 12px;
             ">
-                <div style="background-color:#0f172a; padding:8px; min-height:58px; border-radius:8px;">
-                    <div style="font-size:13px; color:#cbd5e1;">Temp</div>
-                    <div style="font-size:26px; font-weight:700;color:white;">{temperature:.1f} °C</div>
+                <div style="background-color:#0f172a; padding:6px; min-height:44px; border-radius:7px;">
+                    <div style="font-size:11px; color:#cbd5e1;">Temp</div>
+                    <div style="font-size:20px; font-weight:700;color:white;">{temperature:.1f} °C</div>
                 </div>
-                <div style="background-color:#0f172a; padding:8px; min-height:58px; border-radius:8px;">
-                    <div style="font-size:13px; color:#cbd5e1;">Feels</div>
-                    <div style="font-size:26px; font-weight:700;color:white;">{feels_like:.1f} °C</div>
+                <div style="background-color:#0f172a; padding:6px; min-height:44px; border-radius:7px;">
+                    <div style="font-size:11px; color:#cbd5e1;">Feels</div>
+                    <div style="font-size:20px; font-weight:700;color:white;">{feels_like:.1f} °C</div>
                 </div>
-                <div style="background-color:#0f172a; padding:8px; min-height:58px; border-radius:8px;">
-                    <div style="font-size:13px; color:#cbd5e1;">Humidity</div>
-                    <div style="font-size:26px; font-weight:700;color:white;">{humidity}%</div>
+                <div style="background-color:#0f172a; padding:6px; min-height:44px; border-radius:7px;">
+                    <div style="font-size:11px; color:#cbd5e1;">Humidity</div>
+                    <div style="font-size:20px; font-weight:700;color:white;">{humidity}%</div>
                 </div>
-                <div style="background-color:#0f172a; padding:8px; min-height:58px; border-radius:8px;">
-                    <div style="font-size:13px; color:#cbd5e1;">Rain</div>
-                    <div style="font-size:26px; font-weight:700;color:white;">{rain_probability_max}%</div>
+                <div style="background-color:#0f172a; padding:6px; min-height:44px; border-radius:7px;">
+                    <div style="font-size:11px; color:#cbd5e1;">Rain</div>
+                    <div style="font-size:20px; font-weight:700;color:white;">{rain_probability_max}%</div>
                 </div>
-                <div style="background-color:#0f172a; padding:8px; min-height:58px; border-radius:8px;">
-                    <div style="font-size:13px; color:#cbd5e1;">Wind</div>
-                    <div style="font-size:26px; font-weight:700;color:white;">{wind_speed:.1f} km/h</div>
+                <div style="background-color:#0f172a; padding:6px; min-height:44px; border-radius:7px;">
+                    <div style="font-size:11px; color:#cbd5e1;">Wind</div>
+                    <div style="font-size:20px; font-weight:700;color:white;">{wind_speed:.1f} km/h</div>
                 </div>
-                <div style="background-color:#0f172a; padding:8px; min-height:58px; border-radius:8px;">
-                    <div style="font-size:13px; color:#cbd5e1;">Today H/L</div>
-                    <div style="font-size:26px; font-weight:700;color:white;">{high_so_far:.1f} / {low_so_far:.1f} °C</div>
+                <div style="background-color:#0f172a; padding:6px; min-height:44px; border-radius:7px;">
+                    <div style="font-size:11px; color:#cbd5e1;">Today H/L</div>
+                    <div style="font-size:20px; font-weight:700;color:white;">{high_so_far:.1f} / {low_so_far:.1f} °C</div>
                     <div style="font-size:11px; color:#cbd5e1;">H: {high_so_far_time} | L: {low_so_far_time}</div>
                 </div>
             </div>
@@ -615,69 +626,138 @@ if st.button("Get Weather"):
 
         st.subheader("Rolling Last 24 Hours Summary")
 
-        last_row1_col1, last_row1_col2, last_row1_col3 = st.columns(3)
-
-        with last_row1_col1:
-            st.metric("Rainfall", f"{rain_last_24h:.1f} mm")
-
-        with last_row1_col2:
-            st.metric("Highest Temp", f"{high_last_24h:.1f} °C")
-            st.caption(f"At {high_last_24h_time}")
-
-        with last_row1_col3:
-            st.metric("Lowest Temp", f"{low_last_24h:.1f} °C")
-            st.caption(f"At {low_last_24h_time}")
-
-        last_row2_col1, last_row2_col2 = st.columns(2)
-
-        with last_row2_col1:
-            st.metric("Max Wind", f"{max_wind_last_24h:.1f} km/h")
-            st.caption(f"At {max_wind_last_24h_time}")
-
-        with last_row2_col2:
-            st.empty()
+        st.markdown(
+            f"""
+            <div style="
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 6px;
+                margin-top: 10px;
+                margin-bottom: 18px;
+            ">
+                <div style="background-color:#0f172a; padding:6px; min-height:44px; border-radius:7px;">
+                    <div style="font-size:11px; color:#cbd5e1;">Rainfall</div>
+                    <div style="font-size:20px; font-weight:700; color:white;">{rain_last_24h:.1f} mm</div>
+                </div>
+                <div style="background-color:#0f172a; padding:6px; min-height:44px; border-radius:7px;">
+                    <div style="font-size:11px; color:#cbd5e1;">Highest Temp</div>
+                    <div style="font-size:20px; font-weight:700; color:white;">{high_last_24h:.1f} °C</div>
+                    <div style="font-size:11px; color:#cbd5e1;">At {high_last_24h_time}</div>
+                </div>
+                <div style="background-color:#0f172a; padding:6px; min-height:44px; border-radius:7px;">
+                    <div style="font-size:11px; color:#cbd5e1;">Lowest Temp</div>
+                    <div style="font-size:20px; font-weight:700; color:white;">{low_last_24h:.1f} °C</div>
+                    <div style="font-size:11px; color:#cbd5e1;">At {low_last_24h_time}</div>
+                </div>
+                <div style="background-color:#0f172a; padding:6px; min-height:44px; border-radius:7px;">
+                    <div style="font-size:11px; color:#cbd5e1;">Max Wind</div>
+                    <div style="font-size:20px; font-weight:700; color:white;">{max_wind_last_24h:.1f} km/h</div>
+                    <div style="font-size:11px; color:#cbd5e1;">At {max_wind_last_24h_time}</div>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
             
         ####
         st.subheader("Forecast Summary")
 
-        forecast_col1, forecast_col2, forecast_col3 = st.columns(3)
+        components.html(
+            f"""
+            <div style="
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 6px;
+                margin-top: 10px;
+                margin-bottom: 18px;
+            ">
 
-        with forecast_col1:
-            st.markdown("### Next 24 Hours")
-            st.metric("Expected Rainfall", f"{next_24h_summary['rainfall']:.1f} mm")
-            st.metric("Max Rain Chance", f"{next_24h_summary['max_rain_probability']:.0f}%")
-            st.metric("High / Low", f"{next_24h_summary['high_temp']:.1f} / {next_24h_summary['low_temp']:.1f} °C")
-            st.metric("Max Wind", f"{next_24h_summary['max_wind']:.1f} km/h")
+                <div style="background-color:#0f172a;padding:8px;border-radius:8px;line-height:1.25;">
+                    <div style="font-size:14px;font-weight:700;color:white;margin-bottom:8px;">Next 24 Hours</div>
 
-        with forecast_col2:
-            st.markdown("### Next 48 Hours")
-            st.metric("Expected Rainfall", f"{next_48h_summary['rainfall']:.1f} mm")
-            st.metric("Max Rain Chance", f"{next_48h_summary['max_rain_probability']:.0f}%")
-            st.metric("High / Low", f"{next_48h_summary['high_temp']:.1f} / {next_48h_summary['low_temp']:.1f} °C")
-            st.metric("Max Wind", f"{next_48h_summary['max_wind']:.1f} km/h")
+                    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;">
+                        <div>
+                            <div style="font-size:11px;color:#cbd5e1;">Rainfall</div>
+                            <div style="font-size:18px;font-weight:700;color:white;">{next_24h_summary['rainfall']:.1f} mm</div>
+                        </div>
+                        <div>
+                            <div style="font-size:11px;color:#cbd5e1;">Rain Chance</div>
+                            <div style="font-size:18px;font-weight:700;color:white;">{next_24h_summary['max_rain_probability']:.0f}%</div>
+                        </div>
+                        <div>
+                            <div style="font-size:11px;color:#cbd5e1;">High / Low</div>
+                            <div style="font-size:16px;font-weight:700;color:white;">{next_24h_summary['high_temp']:.1f} / {next_24h_summary['low_temp']:.1f} °C</div>
+                        </div>
+                        <div>
+                            <div style="font-size:11px;color:#cbd5e1;">Wind</div>
+                            <div style="font-size:16px;font-weight:700;color:white;">{next_24h_summary['max_wind']:.1f} km/h</div>
+                        </div>
+                    </div>
 
-        with forecast_col3:
-            st.markdown("### Next 72 Hours")
-            st.metric("Expected Rainfall", f"{next_72h_summary['rainfall']:.1f} mm")
-            st.metric("Max Rain Chance", f"{next_72h_summary['max_rain_probability']:.0f}%")
-            st.metric("High / Low", f"{next_72h_summary['high_temp']:.1f} / {next_72h_summary['low_temp']:.1f} °C")
-            st.metric("Max Wind", f"{next_72h_summary['max_wind']:.1f} km/h")
+                    <div style="font-size:11px;color:#93c5fd;margin-top:8px;">
+                        {build_forecast_advice(next_24h_summary)}
+                    </div>
+                </div>
 
-        st.subheader("Forecast Advice")
+                <div style="background-color:#0f172a;padding:8px;border-radius:8px;line-height:1.25;">
+                    <div style="font-size:14px;font-weight:700;color:white;margin-bottom:8px;">Next 48 Hours</div>
 
-        advice_col1, advice_col2, advice_col3 = st.columns(3)
+                    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;">
+                        <div>
+                            <div style="font-size:11px;color:#cbd5e1;">Rainfall</div>
+                            <div style="font-size:18px;font-weight:700;color:white;">{next_48h_summary['rainfall']:.1f} mm</div>
+                        </div>
+                        <div>
+                            <div style="font-size:11px;color:#cbd5e1;">Rain Chance</div>
+                            <div style="font-size:18px;font-weight:700;color:white;">{next_48h_summary['max_rain_probability']:.0f}%</div>
+                        </div>
+                        <div>
+                            <div style="font-size:11px;color:#cbd5e1;">High / Low</div>
+                            <div style="font-size:16px;font-weight:700;color:white;">{next_48h_summary['high_temp']:.1f} / {next_48h_summary['low_temp']:.1f} °C</div>
+                        </div>
+                        <div>
+                            <div style="font-size:11px;color:#cbd5e1;">Wind</div>
+                            <div style="font-size:16px;font-weight:700;color:white;">{next_48h_summary['max_wind']:.1f} km/h</div>
+                        </div>
+                    </div>
 
-        with advice_col1:
-            st.info(f"24h: {build_forecast_advice(next_24h_summary)}")
+                    <div style="font-size:11px;color:#93c5fd;margin-top:8px;">
+                        {build_forecast_advice(next_48h_summary)}
+                    </div>
+                </div>
+                <div style="background-color:#0f172a;padding:8px;border-radius:8px;line-height:1.25;">
+                    <div style="font-size:14px;font-weight:700;color:white;margin-bottom:8px;">Next 72 Hours</div>
 
-        with advice_col2:
-            st.info(f"48h: {build_forecast_advice(next_48h_summary)}")
+                    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;">
+                        <div>
+                            <div style="font-size:11px;color:#cbd5e1;">Rainfall</div>
+                            <div style="font-size:18px;font-weight:700;color:white;">{next_72h_summary['rainfall']:.1f} mm</div>
+                        </div>
+                        <div>
+                            <div style="font-size:11px;color:#cbd5e1;">Rain Chance</div>
+                            <div style="font-size:18px;font-weight:700;color:white;">{next_72h_summary['max_rain_probability']:.0f}%</div>
+                        </div>
+                        <div>
+                            <div style="font-size:11px;color:#cbd5e1;">High / Low</div>
+                            <div style="font-size:16px;font-weight:700;color:white;">{next_72h_summary['high_temp']:.1f} / {next_72h_summary['low_temp']:.1f} °C</div>
+                        </div>
+                        <div>
+                            <div style="font-size:11px;color:#cbd5e1;">Wind</div>
+                            <div style="font-size:16px;font-weight:700;color:white;">{next_72h_summary['max_wind']:.1f} km/h</div>
+                        </div>
+                    </div>
 
-        with advice_col3:
-            st.info(f"72h: {build_forecast_advice(next_72h_summary)}")
-            
+                    <div style="font-size:11px;color:#93c5fd;margin-top:8px;">
+                        {build_forecast_advice(next_72h_summary)}
+                    </div>
+                </div>
 
+            </div>
+            """,
+            height=230,
+        )
+        
         # Keep charts compact by showing only the next 12 hours
         current_time = pd.to_datetime(current["time"])
       
