@@ -303,7 +303,7 @@ if input_method == "City name":
             st.session_state.last_city_search = search_text
 
     if st.session_state.location_results:
-        st.write(f"Showing matches for: {st.session_state.last_city_search}")
+        ## st.write(f"Showing matches for: {st.session_state.last_city_search}")
 
         location_options = {}
 
@@ -328,7 +328,7 @@ if input_method == "City name":
             location_options[label] = location
 
         selected_location_label = st.selectbox(
-            "Select the correct location",
+            "Location match",
             list(location_options.keys())
         )
 
