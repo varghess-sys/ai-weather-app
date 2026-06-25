@@ -10,7 +10,7 @@ st.markdown(
     """
     <style>
         .block-container {
-            padding-top: 1rem;
+            padding-top: 2rem;
             padding-bottom: 1rem;
         }
     </style>
@@ -129,6 +129,7 @@ def validate_coordinates(latitude_text, longitude_text):
 
 @st.cache_data(ttl=600)
 def get_weather(latitude, longitude):
+    
     """Get weather details from Open-Meteo Forecast API."""
 
     url = "https://api.open-meteo.com/v1/forecast"
@@ -244,7 +245,73 @@ def build_forecast_advice(summary):
         advice.append("Heat may be uncomfortable. Stay hydrated.")
 
     return " ".join(advice)
+    
 ###
+def extract_profile(profile_text):
+    text = profile_text.lower()
+
+    profile = {
+        "age": None,
+        "conditions": [],
+        "routine": [],
+        "sensitivities": [],
+        "commute": [],
+    }
+
+    import re
+
+    age_match = re.search(r"\b(\d{1,3})\b", text)
+    if age_match:
+        profile["age"] = int(age_match.group(1))
+
+    if "rheumatoid" in text or "ra" in text:
+        profile["conditions"].append("Rheumatoid arthritis")
+
+    if "asthma" in text:
+        profile["conditions"].append("Asthma")
+
+    if "walk" in text:
+        profile["routine"].append("Walking")
+
+    if "morning" in text:
+        profile["routine"].append("Morning routine")
+
+    if "humidity" in text or "humid" in text:
+        profile["sensitivities"].append("Humidity")
+
+    if "drive" in text or "car" in text:
+        profile["commute"].append("Car")
+
+    return profile
+
+def build_personal_weather_advice(profile, humidity, rain_probability, wind_speed):
+    advice = []
+
+    if "Rheumatoid arthritis" in profile["conditions"]:
+        if humidity >= 70:
+            advice.append("Because you have rheumatoid arthritis and humidity is high, outdoor activity may feel more tiring today.")
+        else:
+            advice.append("RA noted. Weather looks manageable, but avoid overexertion.")
+
+    if "Asthma" in profile["conditions"]:
+        advice.append("Asthma noted. Avoid dusty or very humid outdoor conditions if breathing feels uncomfortable.")
+
+    if "Walking" in profile["routine"]:
+        if rain_probability >= 60:
+            advice.append("For walking, choose an earlier dry window if possible and carry rain protection.")
+        elif wind_speed >= 20:
+            advice.append("For walking, expect some wind. Keep the walk shorter if needed.")
+        else:
+            advice.append("Walking conditions look generally manageable.")
+
+    if "Humidity" in profile["sensitivities"] and humidity >= 65:
+        advice.append("Since humidity affects you, keep outdoor activity shorter and hydrate well.")
+
+    if not advice:
+        advice.append("No major personal weather risk detected from the details provided.")
+
+    return " ".join(advice)
+
 
 with st.expander("How this app works"):
     st.write(
@@ -359,6 +426,18 @@ else:
 
 
 ####
+st.subheader("👤 Personal Profile")
+
+profile_text = st.text_area(
+    "Tell me about yourself",
+    placeholder=(
+        "Example: I am 51. I have rheumatoid arthritis. "
+        "I walk at 7 AM. Humidity makes me tired. I drive to work testing."
+    ),
+    height=100,
+)
+
+
 if st.button("Get Weather"):
     try:
         if input_method == "City name":
@@ -424,6 +503,22 @@ if st.button("Get Weather"):
         today_high = daily["temperature_2m_max"][0]
         today_low = daily["temperature_2m_min"][0]
         rain_probability_max = daily["precipitation_probability_max"][0]
+
+        
+        profile = extract_profile(profile_text)
+
+        if profile_text.strip():
+
+            personal_advice = build_personal_weather_advice(
+                profile,
+                humidity,
+                rain_probability_max,
+                wind_speed,
+            )
+
+            st.subheader("Personal Weather Advice")
+            st.info(personal_advice)
+        
 
         # Calculate high and low temperature so far today
                 
@@ -502,6 +597,7 @@ if st.button("Get Weather"):
             """,
             unsafe_allow_html=True,
         )
+
         # Advisor section
         weather_summary, advisor_text = build_weather_advisor(
             temperature,
