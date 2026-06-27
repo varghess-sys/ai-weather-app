@@ -306,33 +306,38 @@ User text:
             "time_of_day": None,
         }
 
-def build_personal_weather_advice(profile, humidity, rain_probability, wind_speed):
-    advice = []
+def build_personal_weather_advice(profile, humidity, rain_probability, wind_speed, temperature=None, feels_like=None):
+    prompt = f"""You are a personal weather advisor for India. 
+Given the user profile and current weather, give short, specific, practical advice in 2-3 sentences.
+Be conversational and direct. Mention their specific conditions and activities by name.
 
-    if any(c.lower() == "rheumatoid arthritis" for c in profile["conditions"]):
-        if humidity >= 70:
-            advice.append("Because you have rheumatoid arthritis and humidity is high, outdoor activity may feel more tiring today.")
-        else:
-            advice.append("RA noted. Weather looks manageable, but avoid overexertion.")
+User profile:
+- Age: {profile.get('age')}
+- Health conditions: {', '.join(profile.get('conditions', [])) or 'None'}
+- Daily routine: {', '.join(profile.get('routine', [])) or 'None'}
+- Weather sensitivities: {', '.join(profile.get('sensitivities', [])) or 'None'}
+- Commute: {', '.join(profile.get('commute', [])) or 'None'}
+- Time of day they go out: {profile.get('time_of_day') or 'Not specified'}
 
-    if any(c.lower() == "asthma" for c in profile["conditions"]):
-        advice.append("Asthma noted. Avoid dusty or very humid outdoor conditions if breathing feels uncomfortable.")
+Current weather:
+- Temperature: {temperature}°C
+- Feels like: {feels_like}°C
+- Humidity: {humidity}%
+- Rain probability: {rain_probability}%
+- Wind speed: {wind_speed} km/h
 
-    if any(r.lower() == "walking" for r in profile["routine"]):
-        if rain_probability >= 60:
-            advice.append("For walking, choose an earlier dry window if possible and carry rain protection.")
-        elif wind_speed >= 20:
-            advice.append("For walking, expect some wind. Keep the walk shorter if needed.")
-        else:
-            advice.append("Walking conditions look generally manageable.")
+Give personalized advice for this person based on their profile and today's weather."""
 
-    if any(s.lower() == "humidity" for s in profile["sensitivities"]):
-        advice.append("Since humidity affects you, keep outdoor activity shorter and hydrate well.")
+    try:
+        response = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=200,
+            messages=[{"role": "user", "content": prompt}]
+        )
+        return response.content[0].text.strip()
 
-    if not advice:
-        advice.append("No major personal weather risk detected from the details provided.")
-
-    return " ".join(advice)
+    except Exception as e:
+        return f"Unable to generate advice right now. ({e})"
 
 
 with st.expander("How this app works"):
@@ -536,6 +541,8 @@ if st.button("Get Weather"):
                 humidity,
                 rain_probability_max,
                 wind_speed,
+                temperature,
+                feels_like,
             )
 
             st.subheader("Personal Weather Advice")
