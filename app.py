@@ -1,11 +1,14 @@
 import pandas as pd
+import anthropic
+import json
+import os
 import requests
 import streamlit as st
 import streamlit.components.v1 as components
 
-## Test changes
+os.environ["ANTHROPIC_API_KEY"] = st.secrets["ANTHROPIC_API_KEY"]
 
-st.set_page_config(page_title="Weather Buddy AI", page_icon="🌤️", layout="wide")
+st.set_page_config(page_title="Weather Buddy AI", page_icon=":sun_behind_small_cloud:", layout="wide")
 st.markdown(
     """
     <style>
@@ -247,56 +250,75 @@ def build_forecast_advice(summary):
     return " ".join(advice)
     
 ###
+client = anthropic.Anthropic()
+
 def extract_profile(profile_text):
-    text = profile_text.lower()
+    if not profile_text.strip():
+        return {
+            "age": None,
+            "conditions": [],
+            "routine": [],
+            "sensitivities": [],
+            "commute": [],
+            "time_of_day": None,
+        }
 
-    profile = {
-        "age": None,
-        "conditions": [],
-        "routine": [],
-        "sensitivities": [],
-        "commute": [],
-    }
+    prompt = f"""Extract a structured user profile from the text below.
+Return ONLY a valid JSON object. No explanation, no markdown fences, no extra text.
 
-    import re
+Return this exact structure:
+{{
+  "age": integer or null,
+  "conditions": ["list of health conditions mentioned"],
+  "routine": ["list of physical activities mentioned"],
+  "sensitivities": ["list of weather sensitivities mentioned"],
+  "commute": ["list of transport modes mentioned"],
+  "time_of_day": "morning or evening or null"
+}}
 
-    age_match = re.search(r"\b(\d{1,3})\b", text)
-    if age_match:
-        profile["age"] = int(age_match.group(1))
+User text:
+{profile_text}"""
 
-    if "rheumatoid" in text or "ra" in text:
-        profile["conditions"].append("Rheumatoid arthritis")
+    try:
+        response = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=300,
+            messages=[{"role": "user", "content": prompt}]
+        )
 
-    if "asthma" in text:
-        profile["conditions"].append("Asthma")
+        raw = response.content[0].text.strip()
 
-    if "walk" in text:
-        profile["routine"].append("Walking")
+        if raw.startswith("```"):
+            raw = raw.split("```")[1]
+            if raw.startswith("json"):
+                raw = raw[4:]
 
-    if "morning" in text:
-        profile["routine"].append("Morning routine")
+        return json.loads(raw)
 
-    if "humidity" in text or "humid" in text:
-        profile["sensitivities"].append("Humidity")
-
-    if "drive" in text or "car" in text:
-        profile["commute"].append("Car")
-
-    return profile
+    except Exception as e:
+        st.warning(f"Profile extraction failed, using defaults. ({e})")
+        return {
+            "age": None,
+            "conditions": [],
+            "routine": [],
+            "sensitivities": [],
+            "commute": [],
+            "time_of_day": None,
+        }
 
 def build_personal_weather_advice(profile, humidity, rain_probability, wind_speed):
     advice = []
 
-    if "Rheumatoid arthritis" in profile["conditions"]:
+    if any(c.lower() == "rheumatoid arthritis" for c in profile["conditions"]):
         if humidity >= 70:
             advice.append("Because you have rheumatoid arthritis and humidity is high, outdoor activity may feel more tiring today.")
         else:
             advice.append("RA noted. Weather looks manageable, but avoid overexertion.")
 
-    if "Asthma" in profile["conditions"]:
+    if any(c.lower() == "asthma" for c in profile["conditions"]):
         advice.append("Asthma noted. Avoid dusty or very humid outdoor conditions if breathing feels uncomfortable.")
 
-    if "Walking" in profile["routine"]:
+    if any(r.lower() == "walking" for r in profile["routine"]):
         if rain_probability >= 60:
             advice.append("For walking, choose an earlier dry window if possible and carry rain protection.")
         elif wind_speed >= 20:
@@ -304,7 +326,7 @@ def build_personal_weather_advice(profile, humidity, rain_probability, wind_spee
         else:
             advice.append("Walking conditions look generally manageable.")
 
-    if "Humidity" in profile["sensitivities"] and humidity >= 65:
+    if any(s.lower() == "humidity" for s in profile["sensitivities"]):
         advice.append("Since humidity affects you, keep outdoor activity shorter and hydrate well.")
 
     if not advice:
@@ -506,7 +528,7 @@ if st.button("Get Weather"):
 
         
         profile = extract_profile(profile_text)
-
+        
         if profile_text.strip():
 
             personal_advice = build_personal_weather_advice(
@@ -904,5 +926,4 @@ if st.button("Get Weather"):
 
     except Exception as e:
         st.error(f"Something went wrong: {e}")
-
 
