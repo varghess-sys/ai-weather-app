@@ -291,12 +291,19 @@ Return ONLY a valid JSON object. No explanation, no markdown fences, no extra te
 Return this exact structure:
 {{
   "age": integer or null,
-  "conditions": ["list of health conditions mentioned"],
+  "conditions": ["ALL health conditions, symptoms, and ailments mentioned — capture every one, do not stop at the first"],
   "routine": ["list of physical activities mentioned"],
   "sensitivities": ["list of weather sensitivities mentioned"],
   "commute": ["list of transport modes mentioned"],
   "time_of_day": "morning or evening or null"
 }}
+
+Important rules:
+- "conditions" must be a list. Capture ALL conditions, symptoms, and ailments — even single words like "vomiting", "tired", "nausea".
+- Use medical knowledge to interpret abbreviations and shorthand based on context. If unclear, keep it as the user said it.
+- Never return only the first condition. Capture every condition the user mentions.
+- Do NOT invent or assume conditions that are not mentioned. Only extract what the user explicitly said.
+
 
 User text:
 {profile_text}"""
@@ -350,7 +357,9 @@ Current weather:
 - AQI (Air Quality Index): {aqi if aqi is not None else 'Not available'}
 - UV Index: {uv_index if uv_index is not None else 'Not available'}
 
-Give personalized advice for this person based on their profile and today's weather."""
+Give personalized advice for this person based on their profile and today's weather.
+You MUST mention every condition listed under Health conditions — do not skip any, even if it seems less weather-related.
+Do NOT include any heading, title, or bold text. Return plain sentences only."""
 
     try:
         response = client.messages.create(
@@ -828,102 +837,106 @@ if st.button("Get Weather"):
 
             
         ####
-        st.subheader("Forecast Summary")
+        show_forecast = st.checkbox("📅 Show Forecast & Charts", value=False)
 
-        components.html(
-            f"""
-            <div style="
-                display: grid;
-                grid-template-columns: repeat(1, 1fr);
-                gap: 6px;
-                margin-top: 10px;
-                margin-bottom: 18px;
-            ">
+        if show_forecast:
 
-                <div style="background-color:#0f172a;padding:8px;border-radius:8px;line-height:1.25;">
-                    <div style="font-size:14px;font-weight:700;color:white;margin-bottom:8px;">Next 24 Hours</div>
+            st.subheader("Forecast Summary")
 
-                    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;">
-                        <div>
-                            <div style="font-size:11px;color:#cbd5e1;">Rainfall</div>
-                            <div style="font-size:18px;font-weight:700;color:white;">{next_24h_summary['rainfall']:.1f} mm</div>
+            components.html(
+                f"""
+                <div style="
+                    display: grid;
+                    grid-template-columns: repeat(1, 1fr);
+                    gap: 6px;
+                    margin-top: 10px;
+                    margin-bottom: 18px;
+                ">
+
+                    <div style="background-color:#0f172a;padding:8px;border-radius:8px;line-height:1.25;">
+                        <div style="font-size:14px;font-weight:700;color:white;margin-bottom:8px;">Next 24 Hours</div>
+
+                        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;">
+                            <div>
+                                <div style="font-size:11px;color:#cbd5e1;">Rainfall</div>
+                                <div style="font-size:18px;font-weight:700;color:white;">{next_24h_summary['rainfall']:.1f} mm</div>
+                            </div>
+                            <div>
+                                <div style="font-size:11px;color:#cbd5e1;">Rain Chance</div>
+                                <div style="font-size:18px;font-weight:700;color:white;">{next_24h_summary['max_rain_probability']:.0f}%</div>
+                            </div>
+                            <div>
+                                <div style="font-size:11px;color:#cbd5e1;">High / Low</div>
+                                <div style="font-size:16px;font-weight:700;color:white;">{next_24h_summary['high_temp']:.1f} / {next_24h_summary['low_temp']:.1f} °C</div>
+                            </div>
+                            <div>
+                                <div style="font-size:11px;color:#cbd5e1;">Wind</div>
+                                <div style="font-size:16px;font-weight:700;color:white;">{next_24h_summary['max_wind']:.1f} km/h</div>
+                            </div>
                         </div>
-                        <div>
-                            <div style="font-size:11px;color:#cbd5e1;">Rain Chance</div>
-                            <div style="font-size:18px;font-weight:700;color:white;">{next_24h_summary['max_rain_probability']:.0f}%</div>
-                        </div>
-                        <div>
-                            <div style="font-size:11px;color:#cbd5e1;">High / Low</div>
-                            <div style="font-size:16px;font-weight:700;color:white;">{next_24h_summary['high_temp']:.1f} / {next_24h_summary['low_temp']:.1f} °C</div>
-                        </div>
-                        <div>
-                            <div style="font-size:11px;color:#cbd5e1;">Wind</div>
-                            <div style="font-size:16px;font-weight:700;color:white;">{next_24h_summary['max_wind']:.1f} km/h</div>
+
+                        <div style="font-size:11px;color:#93c5fd;margin-top:8px;">
+                            {build_forecast_advice(next_24h_summary)}
                         </div>
                     </div>
 
-                    <div style="font-size:11px;color:#93c5fd;margin-top:8px;">
-                        {build_forecast_advice(next_24h_summary)}
+                    <div style="background-color:#0f172a;padding:8px;border-radius:8px;line-height:1.25;">
+                        <div style="font-size:14px;font-weight:700;color:white;margin-bottom:8px;">Next 48 Hours</div>
+
+                        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;">
+                            <div>
+                                <div style="font-size:11px;color:#cbd5e1;">Rainfall</div>
+                                <div style="font-size:18px;font-weight:700;color:white;">{next_48h_summary['rainfall']:.1f} mm</div>
+                            </div>
+                            <div>
+                                <div style="font-size:11px;color:#cbd5e1;">Rain Chance</div>
+                                <div style="font-size:18px;font-weight:700;color:white;">{next_48h_summary['max_rain_probability']:.0f}%</div>
+                            </div>
+                            <div>
+                                <div style="font-size:11px;color:#cbd5e1;">High / Low</div>
+                                <div style="font-size:16px;font-weight:700;color:white;">{next_48h_summary['high_temp']:.1f} / {next_48h_summary['low_temp']:.1f} °C</div>
+                            </div>
+                            <div>
+                                <div style="font-size:11px;color:#cbd5e1;">Wind</div>
+                                <div style="font-size:16px;font-weight:700;color:white;">{next_48h_summary['max_wind']:.1f} km/h</div>
+                            </div>
+                        </div>
+
+                        <div style="font-size:11px;color:#93c5fd;margin-top:8px;">
+                            {build_forecast_advice(next_48h_summary)}
+                        </div>
                     </div>
+                    <div style="background-color:#0f172a;padding:8px;border-radius:8px;line-height:1.25;">
+                        <div style="font-size:14px;font-weight:700;color:white;margin-bottom:8px;">Next 72 Hours</div>
+
+                        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;">
+                            <div>
+                                <div style="font-size:11px;color:#cbd5e1;">Rainfall</div>
+                                <div style="font-size:18px;font-weight:700;color:white;">{next_72h_summary['rainfall']:.1f} mm</div>
+                            </div>
+                            <div>
+                                <div style="font-size:11px;color:#cbd5e1;">Rain Chance</div>
+                                <div style="font-size:18px;font-weight:700;color:white;">{next_72h_summary['max_rain_probability']:.0f}%</div>
+                            </div>
+                            <div>
+                                <div style="font-size:11px;color:#cbd5e1;">High / Low</div>
+                                <div style="font-size:16px;font-weight:700;color:white;">{next_72h_summary['high_temp']:.1f} / {next_72h_summary['low_temp']:.1f} °C</div>
+                            </div>
+                            <div>
+                                <div style="font-size:11px;color:#cbd5e1;">Wind</div>
+                                <div style="font-size:16px;font-weight:700;color:white;">{next_72h_summary['max_wind']:.1f} km/h</div>
+                            </div>
+                        </div>
+
+                        <div style="font-size:11px;color:#93c5fd;margin-top:8px;">
+                            {build_forecast_advice(next_72h_summary)}
+                        </div>
+                    </div>
+
                 </div>
-
-                <div style="background-color:#0f172a;padding:8px;border-radius:8px;line-height:1.25;">
-                    <div style="font-size:14px;font-weight:700;color:white;margin-bottom:8px;">Next 48 Hours</div>
-
-                    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;">
-                        <div>
-                            <div style="font-size:11px;color:#cbd5e1;">Rainfall</div>
-                            <div style="font-size:18px;font-weight:700;color:white;">{next_48h_summary['rainfall']:.1f} mm</div>
-                        </div>
-                        <div>
-                            <div style="font-size:11px;color:#cbd5e1;">Rain Chance</div>
-                            <div style="font-size:18px;font-weight:700;color:white;">{next_48h_summary['max_rain_probability']:.0f}%</div>
-                        </div>
-                        <div>
-                            <div style="font-size:11px;color:#cbd5e1;">High / Low</div>
-                            <div style="font-size:16px;font-weight:700;color:white;">{next_48h_summary['high_temp']:.1f} / {next_48h_summary['low_temp']:.1f} °C</div>
-                        </div>
-                        <div>
-                            <div style="font-size:11px;color:#cbd5e1;">Wind</div>
-                            <div style="font-size:16px;font-weight:700;color:white;">{next_48h_summary['max_wind']:.1f} km/h</div>
-                        </div>
-                    </div>
-
-                    <div style="font-size:11px;color:#93c5fd;margin-top:8px;">
-                        {build_forecast_advice(next_48h_summary)}
-                    </div>
-                </div>
-                <div style="background-color:#0f172a;padding:8px;border-radius:8px;line-height:1.25;">
-                    <div style="font-size:14px;font-weight:700;color:white;margin-bottom:8px;">Next 72 Hours</div>
-
-                    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;">
-                        <div>
-                            <div style="font-size:11px;color:#cbd5e1;">Rainfall</div>
-                            <div style="font-size:18px;font-weight:700;color:white;">{next_72h_summary['rainfall']:.1f} mm</div>
-                        </div>
-                        <div>
-                            <div style="font-size:11px;color:#cbd5e1;">Rain Chance</div>
-                            <div style="font-size:18px;font-weight:700;color:white;">{next_72h_summary['max_rain_probability']:.0f}%</div>
-                        </div>
-                        <div>
-                            <div style="font-size:11px;color:#cbd5e1;">High / Low</div>
-                            <div style="font-size:16px;font-weight:700;color:white;">{next_72h_summary['high_temp']:.1f} / {next_72h_summary['low_temp']:.1f} °C</div>
-                        </div>
-                        <div>
-                            <div style="font-size:11px;color:#cbd5e1;">Wind</div>
-                            <div style="font-size:16px;font-weight:700;color:white;">{next_72h_summary['max_wind']:.1f} km/h</div>
-                        </div>
-                    </div>
-
-                    <div style="font-size:11px;color:#93c5fd;margin-top:8px;">
-                        {build_forecast_advice(next_72h_summary)}
-                    </div>
-                </div>
-
-            </div>
-            """,
-            height=460,
-        )
+                """,
+                height=460,
+            )
         
         # Keep charts compact by showing only the next 12 hours
         current_time = pd.to_datetime(current["time"])
