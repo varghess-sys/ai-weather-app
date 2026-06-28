@@ -131,6 +131,27 @@ def validate_coordinates(latitude_text, longitude_text):
 
 
 @st.cache_data(ttl=600)
+def get_air_quality(latitude, longitude):
+    """Get air quality data from Open-Meteo Air Quality API."""
+
+    url = "https://air-quality-api.open-meteo.com/v1/air-quality"
+
+    params = {
+        "latitude": latitude,
+        "longitude": longitude,
+        "current": "pm10,pm2_5,us_aqi",
+        "timezone": "auto",
+    }
+
+    try:
+        response = requests.get(url, params=params, timeout=10)
+        response.raise_for_status()
+        return response.json()
+    except Exception:
+        return None
+
+
+@st.cache_data(ttl=600)
 def get_weather(latitude, longitude):
     
     """Get weather details from Open-Meteo Forecast API."""
@@ -145,7 +166,8 @@ def get_weather(latitude, longitude):
             "relative_humidity_2m,"
             "apparent_temperature,"
             "precipitation,"
-            "wind_speed_10m"
+            "wind_speed_10m,"
+            "uv_index"
         ),
         "hourly": (
             "temperature_2m,"
@@ -306,7 +328,7 @@ User text:
             "time_of_day": None,
         }
 
-def build_personal_weather_advice(profile, humidity, rain_probability, wind_speed, temperature=None, feels_like=None):
+def build_personal_weather_advice(profile, humidity, rain_probability, wind_speed, temperature=None, feels_like=None, aqi=None, uv_index=None):
     prompt = f"""You are a personal weather advisor for India. 
 Given the user profile and current weather, give short, specific, practical advice in 2-3 sentences.
 Be conversational and direct. Mention their specific conditions and activities by name.
@@ -325,6 +347,8 @@ Current weather:
 - Humidity: {humidity}%
 - Rain probability: {rain_probability}%
 - Wind speed: {wind_speed} km/h
+- AQI (Air Quality Index): {aqi if aqi is not None else 'Not available'}
+- UV Index: {uv_index if uv_index is not None else 'Not available'}
 
 Give personalized advice for this person based on their profile and today's weather."""
 
@@ -513,6 +537,8 @@ if st.button("Get Weather"):
 
         weather_data = get_weather(latitude, longitude)
 
+        air_quality_data = get_air_quality(latitude, longitude)
+
         if "error" in weather_data:
             st.warning(weather_data["message"])
             st.stop()
@@ -531,6 +557,17 @@ if st.button("Get Weather"):
         today_low = daily["temperature_2m_min"][0]
         rain_probability_max = daily["precipitation_probability_max"][0]
 
+        today_high = daily["temperature_2m_max"][0]
+        today_low = daily["temperature_2m_min"][0]
+        rain_probability_max = daily["precipitation_probability_max"][0]
+
+        uv_index = current.get("uv_index", None)
+
+        aqi = None
+        pm25 = None
+        if air_quality_data and "current" in air_quality_data:
+            aqi = air_quality_data["current"].get("us_aqi", None)
+            pm25 = air_quality_data["current"].get("pm2_5", None)
         
         profile = extract_profile(profile_text)
         
@@ -543,6 +580,8 @@ if st.button("Get Weather"):
                 wind_speed,
                 temperature,
                 feels_like,
+                aqi,
+                uv_index,
             )
 
             st.subheader("Personal Weather Advice")
