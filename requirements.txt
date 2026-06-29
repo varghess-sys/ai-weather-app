@@ -1,4 +1,9 @@
 streamlit
 requests
 pandas
-anthropic 
+anthropic
+streamlit-mic-recorder==0.0.8
+SpeechRecognition==3.17.0
+audioop-lts==0.2.2
+standard-aifc==3.13.0
+standard-chunk==3.13.0
