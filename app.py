@@ -515,6 +515,20 @@ else:
 
 st.subheader("👤 Personal Profile")
 
+from streamlit_mic_recorder import speech_to_text
+
+voice_text = speech_to_text(
+    language='en',
+    start_prompt="🎤 Speak instead",
+    stop_prompt="⏹️ Stop",
+    just_once=True,
+    use_container_width=True,
+    key='STT'
+)
+
+if voice_text:
+    st.session_state["profile_text_widget"] = voice_text
+
 profile_text = st.text_area(
     "Tell me about yourself",
     placeholder=(
@@ -522,8 +536,8 @@ profile_text = st.text_area(
         "I walk at 7 AM. Humidity makes me tired. I drive to work testing."
     ),
     height=100,
+    key="profile_text_widget"
 )
-
 
 if st.button("Get Weather"):
     try:
